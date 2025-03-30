@@ -207,7 +207,8 @@ def upload_file():
             input_size = scaled_features.shape[1]  # Use original feature dimension
 
         # Set window size based on model type
-        window_size = 1 if model_type in ['lstm', 'pca-lstm'] else 7  # Use window size 7 for GRU and transformer
+        # window_size = 1 if model_type in ['lstm', 'pca-lstm'] else 7  # Use window size 7 for GRU and transformer
+        window_size = 1  # Use window size 7 for GRU and transformer
 
         def create_sequences(data, window_size):
             X, y = [], []
