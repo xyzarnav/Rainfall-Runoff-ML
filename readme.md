@@ -43,25 +43,31 @@ HydroAnalytics is an advanced web-based application for hydrological modeling th
    ```bash
    git clone https://github.com/yourusername/rainfall_runoff.git
    cd rainfall_runoff-main
+   ```
 
 2. Create and activate a virtual environment:
-    ```bash
-    python -m venv venv
-# On Windows
-venv\Scripts\activate
-# On macOS/Linux
-source venv/bin/activate
+   - On Windows:
+     ```bash
+     python -m venv venv
+     venv\Scripts\activate
+     ```
+   - On macOS/Linux:
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
 
 3. Install dependencies:
-
-  ```bash
-pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 4. Run the application:
-  ```bash 
-python app.py
-
+   ```bash
+   python app.py
+   ```
 
 5. Open your browser and navigate to:
-  ```bash 
-  http://localhost:5000
+   ```
+   http://localhost:5000
+   ```
