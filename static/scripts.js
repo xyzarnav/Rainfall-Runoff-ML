@@ -152,4 +152,146 @@ document.addEventListener('DOMContentLoaded', function () {
         alert('PDF download functionality will be implemented here');
         // PDF implementation would go here
     });
+        
+    // Add event listener for the clear data button
+    const clearDataBtn = document.getElementById('clearData');
+    if (clearDataBtn) {
+        clearDataBtn.addEventListener('click', clearStoredData);
+    }
+
+    // Add event listeners for both clear data buttons
+    const clearDataButtons = ['navClearData', 'heroClearData'];
+    clearDataButtons.forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.addEventListener('click', clearStoredData);
+        }
+    });
+
+    // Simplified clear data button initialization
+    function initializeClearButtons() {
+        // Get all clear data buttons
+        const buttons = document.querySelectorAll('button[id$="ClearData"]');
+        
+        buttons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                clearStoredData();
+            });
+        });
+
+        console.log('Clear data buttons initialized:', Array.from(buttons).map(btn => btn.id));
+    }
+
+    // Initialize clear buttons
+    initializeClearButtons();
 });
+
+function clearStoredData() {
+    if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+        try {
+            // Clear all stored data
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Reset form
+            const uploadForm = document.getElementById('upload-form');
+            if (uploadForm) uploadForm.reset();
+            
+            // Reset all display elements
+            ['metrics', 'plots', 'print-section'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.style.display = 'none';
+            });
+            
+            // Clear metric values
+            ['model-name', 'predicted-runoff', 'actual-runoff', 'mse', 'mae', 'r2'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = '';
+            });
+            
+            // Clear plot images
+            ['line-plot', 'scatter-plot', 'bar-plot', 'residuals-plot'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.src = '';
+            });
+            
+            // Hide loading spinner
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'none';
+            
+            // Clear console output
+            console.clear();
+            
+            // Clear any existing model state
+            if (window.modelState) {
+                window.modelState = null;
+            }
+            
+            // Make a request to clear server-side data
+            fetch('/clear_session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('All data has been cleared successfully!', 'success');
+                } else {
+                    throw new Error('Failed to clear server data');
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing server data:', error);
+                showToast('Warning: Client data cleared but server data may remain', 'warning');
+            });
+
+        } catch (error) {
+            console.error('Error clearing data:', error);
+            showToast('Error clearing data. Please try again.', 'error');
+        }
+    }
+}
+
+// Add toast notification function
+function showToast(message, type = 'success') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        `;
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.style.cssText = `
+        background: ${type === 'success' ? '#4CAF50' : '#f44336'};
+        color: white;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        min-width: 250px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    `;
+    
+    toast.textContent = message;
+    
+    // Add to container
+    toastContainer.appendChild(toast);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
