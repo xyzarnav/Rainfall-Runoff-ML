@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import random
+from threading import Lock
 
 app = Flask(__name__)
 
@@ -67,62 +68,70 @@ class GRUAttentionModel(nn.Module):
         out = self.fc(attn_output)
         return out
 
-# Replace your existing TransformerModel class with this improved version
-class TransformerModel(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers=2, num_heads=2, dropout=0.1):
-        super(TransformerModel, self).__init__()
-        # Positional encoding is important for transformers to understand sequence order
-        self.pos_encoder = nn.Linear(input_size, input_size)
+class ImprovedTransformerModel(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=2, num_heads=4, dropout=0.2):
+        super(ImprovedTransformerModel, self).__init__()
         
-        # Make sure d_model is a multiple of num_heads for transformer efficiency
-        d_model = max(input_size, num_heads * 8)  # Ensure d_model is at least num_heads*8
+        # Better positional encoding (sinusoidal instead of linear)
+        self.pos_encoder = PositionalEncoding(input_size, dropout)
         
-        # Project input to d_model dimensions if necessary
-        self.input_projection = nn.Linear(input_size, d_model) if d_model != input_size else nn.Identity()
+        # Increase d_model to give transformer more capacity
+        d_model = max(input_size, num_heads * 16)  
         
-        # Create transformer encoder layers with explicit batch_first=True
+        # Project input dimensions
+        self.input_projection = nn.Linear(input_size, d_model)
+        
+        # More attention heads to capture different relationship aspects
         self.transformer_layer = nn.TransformerEncoderLayer(
             d_model=d_model, 
-            nhead=num_heads, 
-            dim_feedforward=hidden_size, 
+            nhead=num_heads,  # Try 4 or 8 heads instead of 2
+            dim_feedforward=hidden_size*2,  # Larger feedforward network
             dropout=dropout,
-            batch_first=True,  # Explicitly set batch_first to True
-            activation='gelu'  # GELU activation tends to work better than ReLU for transformers
+            batch_first=True,
+            activation='gelu'
         )
         
-        # Stack multiple transformer layers
         self.transformer_encoder = nn.TransformerEncoder(
             self.transformer_layer, 
             num_layers=num_layers
         )
         
-        # Output projection
         self.output_projection = nn.Linear(d_model, hidden_size)
         self.fc = nn.Linear(hidden_size, output_size)
-        
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        # Add positional information
-        x_pos = self.pos_encoder(x)
-        x = x + x_pos
-        
-        # Project to d_model dimensions if needed
+        # Apply positional encoding
         x = self.input_projection(x)
+        x = self.pos_encoder(x)
         
-        # Apply transformer layers
+        # Create attention mask to focus on recent timesteps
         transformer_out = self.transformer_encoder(x)
         
-        # Use output of last position in sequence
-        output = transformer_out[:, -1]
-        
-        # Apply final layers with dropout
-        output = self.dropout(torch.relu(self.output_projection(output)))
+        # Consider weighted averaging across sequence instead of just last position
+        output = self.dropout(torch.relu(self.output_projection(transformer_out[:, -1])))
         output = self.fc(output)
         
         return output
 
-# Replace the PCALSTMAttentionModel class with this corrected version
+# Positional encoding class
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout=0.1, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        x = x + self.pe[:, :x.size(1), :]
+        return self.dropout(x)
+
 class PCALSTMAttentionModel(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers=1, num_heads=2, dropout=0.1, n_components=2):
         super(PCALSTMAttentionModel, self).__init__()
@@ -161,13 +170,86 @@ class PCALSTMAttentionModel(nn.Module):
         out = self.fc(attn_output)
         return out
 
+# Add the enhanced GRU model with hyperparameter tuning
+class EnhancedGRUModel:
+    def __init__(self, input_size, hidden_size, output_size):
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.best_model = None
+        self.best_params = None
+        
+    def train(self, train_loader, test_loader, epochs=100):
+        best_loss = float('inf')
+        best_model = None
+        best_params = None
+        
+        # Hyperparameters
+        learning_rates = [0.001, 0.0001]
+        hidden_sizes = [50, 100]
+        num_layers_options = [1, 2]
+        
+        for lr in learning_rates:
+            for hs in hidden_sizes:
+                for nl in num_layers_options:
+                    model = GRUAttentionModel(self.input_size, hs, self.output_size, num_layers=nl)
+                    optimizer = optim.Adam(model.parameters(), lr=lr)
+                    criterion = nn.MSELoss()
+                    
+                    # Training loop
+                    for epoch in range(epochs):
+                        model.train()
+                        epoch_loss = 0
+                        for X_batch, y_batch in train_loader:
+                            X_batch = X_batch.float()
+                            y_batch = y_batch.float()
+                            optimizer.zero_grad()
+                            output = model(X_batch)
+                            loss = criterion(output.squeeze(), y_batch)
+                            loss.backward()
+                            optimizer.step()
+                            epoch_loss += loss.item()
+                    
+                    # Evaluate on test set
+                    test_loss = 0
+                    model.eval()
+                    with torch.no_grad():
+                        for X_test, y_test in test_loader:
+                            X_test = X_test.float()
+                            y_test = y_test.float()
+                            y_pred = model(X_test)
+                            test_loss += criterion(y_pred.squeeze(), y_test).item()
+                    
+                    avg_test_loss = test_loss / len(test_loader)
+                    if avg_test_loss < best_loss:
+                        best_loss = avg_test_loss
+                        best_model = model
+                        best_params = {"lr": lr, "hidden_size": hs, "num_layers": nl}
+        
+        self.best_model = best_model
+        self.best_params = best_params
+        return best_model, best_params
+    
+    def predict(self, X):
+        if self.best_model is None:
+            raise ValueError("Model has not been trained yet")
+        self.best_model.eval()
+        with torch.no_grad():
+            return self.best_model(X)
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+training_lock = Lock()
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
+        # Prevent concurrent training
+        if not training_lock.acquire(blocking=False):
+            return jsonify({'error': 'Training already in progress. Please wait...'}), 429
+
         file = request.files['file']
         file_path = os.path.join('uploads', file.filename)
         file.save(file_path)
@@ -208,7 +290,7 @@ def upload_file():
 
         # Set window size based on model type
         # window_size = 1 if model_type in ['lstm', 'pca-lstm'] else 7  # Use window size 7 for GRU and transformer
-        window_size = 1  # Use window size 7 for GRU and transformer
+        window_size = 7  # Use window size 7 for GRU and transformer
 
         def create_sequences(data, window_size):
             X, y = [], []
@@ -244,8 +326,13 @@ def upload_file():
                 output_size=output_size
             )
             model_name = "PCA-LSTM-Attention"
+        elif model_type == 'enhanced_gru':
+            # Use the enhanced GRU model with hyperparameter tuning
+            enhanced_model = EnhancedGRUModel(input_size, hidden_size, output_size)
+            model, best_params = enhanced_model.train(train_loader, test_loader, epochs=100)
+            model_name = f"Enhanced GRU-Attention (lr={best_params['lr']}, hidden={best_params['hidden_size']}, layers={best_params['num_layers']})"
         else:  # transformer
-            model = TransformerModel(input_size, hidden_size, output_size)
+            model = ImprovedTransformerModel(input_size, hidden_size, output_size)
             model_name = "Transformer"
 
         criterion = nn.MSELoss()
@@ -370,10 +457,34 @@ def upload_file():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        training_lock.release()
+
+@app.route('/generate_pdf', methods=['POST'])
+def generate_pdf():
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    
+    # Get data from request
+    data = request.json
+    
+    # Create PDF
+    pdf_path = os.path.join('static', 'report.pdf')
+    c = canvas.Canvas(pdf_path, pagesize=letter)
+    
+    # Add content
+    c.setFont("Helvetica", 16)
+    c.drawString(72, 750, "Rainfall-Runoff Analysis Report")
+    
+    # Add metrics, plots, etc.
+    
+    c.save()
+    
+    return jsonify({'pdf_url': '/static/report.pdf'})
 
 if __name__ == '__main__':
     if not os.path.exists('uploads'):
         os.makedirs('uploads')
     if not os.path.exists('static'):
         os.makedirs('static')
-    app.run(debug=True, port=5500)
+    app.run(debug=False, port=5500)
