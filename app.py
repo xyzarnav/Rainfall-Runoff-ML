@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import gc  
 
 # Add these two lines before importing matplotlib
 import matplotlib
@@ -18,7 +19,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import random
-from threading import Lock
 
 app = Flask(__name__)
 
@@ -40,6 +40,12 @@ class LSTMAttentionModel(nn.Module):
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.attention = nn.MultiheadAttention(hidden_size, num_heads)
         self.fc = nn.Linear(hidden_size, output_size)
+        
+    def __del__(self):
+        # Explicit cleanup
+        del self.lstm
+        del self.attention
+        del self.fc
 
     def forward(self, x):
         lstm_out, _ = self.lstm(x)
@@ -59,6 +65,15 @@ class GRUAttentionModel(nn.Module):
         self.attention = nn.MultiheadAttention(hidden_size, num_heads)
         self.fc = nn.Linear(hidden_size, output_size)
 
+    def __del__(self):
+        # Explicit cleanup
+        if hasattr(self, 'gru'):
+            del self.gru
+        if hasattr(self, 'attention'):
+            del self.attention
+        if hasattr(self, 'fc'):
+            del self.fc
+
     def forward(self, x):
         gru_out, _ = self.gru(x)
         gru_out = gru_out.permute(1, 0, 2)
@@ -68,70 +83,79 @@ class GRUAttentionModel(nn.Module):
         out = self.fc(attn_output)
         return out
 
-class ImprovedTransformerModel(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers=2, num_heads=4, dropout=0.2):
-        super(ImprovedTransformerModel, self).__init__()
+# Replace your existing TransformerModel class with this improved version
+class TransformerModel(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=2, num_heads=2, dropout=0.1):
+        super(TransformerModel, self).__init__()
+        # Positional encoding is important for transformers to understand sequence order
+        self.pos_encoder = nn.Linear(input_size, input_size)
         
-        # Better positional encoding (sinusoidal instead of linear)
-        self.pos_encoder = PositionalEncoding(input_size, dropout)
+        # Make sure d_model is a multiple of num_heads for transformer efficiency
+        d_model = max(input_size, num_heads * 8)  # Ensure d_model is at least num_heads*8
         
-        # Increase d_model to give transformer more capacity
-        d_model = max(input_size, num_heads * 16)  
+        # Project input to d_model dimensions if necessary
+        self.input_projection = nn.Linear(input_size, d_model) if d_model != input_size else nn.Identity()
         
-        # Project input dimensions
-        self.input_projection = nn.Linear(input_size, d_model)
-        
-        # More attention heads to capture different relationship aspects
+        # Create transformer encoder layers with explicit batch_first=True
         self.transformer_layer = nn.TransformerEncoderLayer(
             d_model=d_model, 
-            nhead=num_heads,  # Try 4 or 8 heads instead of 2
-            dim_feedforward=hidden_size*2,  # Larger feedforward network
+            nhead=num_heads, 
+            dim_feedforward=hidden_size, 
             dropout=dropout,
-            batch_first=True,
-            activation='gelu'
+            batch_first=True,  # Explicitly set batch_first to True
+            activation='gelu'  # GELU activation tends to work better than ReLU for transformers
         )
         
+        # Stack multiple transformer layers
         self.transformer_encoder = nn.TransformerEncoder(
             self.transformer_layer, 
             num_layers=num_layers
         )
         
+        # Output projection
         self.output_projection = nn.Linear(d_model, hidden_size)
         self.fc = nn.Linear(hidden_size, output_size)
+        
         self.dropout = nn.Dropout(dropout)
 
+    def __del__(self):
+        # Explicit cleanup
+        if hasattr(self, 'pos_encoder'):
+            del self.pos_encoder
+        if hasattr(self, 'input_projection'):
+            del self.input_projection
+        if hasattr(self, 'transformer_layer'):
+            del self.transformer_layer
+        if hasattr(self, 'transformer_encoder'):
+            del self.transformer_encoder
+        if hasattr(self, 'output_projection'):
+            del self.output_projection
+        if hasattr(self, 'fc'):
+            del self.fc
+        if hasattr(self, 'dropout'):
+            del self.dropout
+
     def forward(self, x):
-        # Apply positional encoding
-        x = self.input_projection(x)
-        x = self.pos_encoder(x)
+        # Add positional information
+        x_pos = self.pos_encoder(x)
+        x = x + x_pos
         
-        # Create attention mask to focus on recent timesteps
+        # Project to d_model dimensions if needed
+        x = self.input_projection(x)
+        
+        # Apply transformer layers
         transformer_out = self.transformer_encoder(x)
         
-        # Consider weighted averaging across sequence instead of just last position
-        output = self.dropout(torch.relu(self.output_projection(transformer_out[:, -1])))
+        # Use output of last position in sequence
+        output = transformer_out[:, -1]
+        
+        # Apply final layers with dropout
+        output = self.dropout(torch.relu(self.output_projection(output)))
         output = self.fc(output)
         
         return output
 
-# Positional encoding class
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, dropout=0.1, max_len=5000):
-        super(PositionalEncoding, self).__init__()
-        self.dropout = nn.Dropout(p=dropout)
-
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0)
-        self.register_buffer('pe', pe)
-
-    def forward(self, x):
-        x = x + self.pe[:, :x.size(1), :]
-        return self.dropout(x)
-
+# Replace the PCALSTMAttentionModel class with this corrected version
 class PCALSTMAttentionModel(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers=1, num_heads=2, dropout=0.1, n_components=2):
         super(PCALSTMAttentionModel, self).__init__()
@@ -146,6 +170,17 @@ class PCALSTMAttentionModel(nn.Module):
         self.lstm = nn.LSTM(n_components, hidden_size, num_layers, batch_first=True)
         self.attention = nn.MultiheadAttention(hidden_size, num_heads)
         self.fc = nn.Linear(hidden_size, output_size)
+
+    def __del__(self):
+        # Explicit cleanup
+        if hasattr(self, 'pca_layer'):
+            del self.pca_layer
+        if hasattr(self, 'lstm'):
+            del self.lstm
+        if hasattr(self, 'attention'):
+            del self.attention
+        if hasattr(self, 'fc'):
+            del self.fc
 
     def forward(self, x):
         # Apply PCA-like dimensionality reduction
@@ -241,15 +276,19 @@ class EnhancedGRUModel:
 def index():
     return render_template('index.html')
 
-training_lock = Lock()
-
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    model = None
+    optimizer = None
+    criterion = None
+    enhanced_model = None
+    
     try:
-        # Prevent concurrent training
-        if not training_lock.acquire(blocking=False):
-            return jsonify({'error': 'Training already in progress. Please wait...'}), 429
-
+        # Clear CUDA cache and force garbage collection at start
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+        
         file = request.files['file']
         file_path = os.path.join('uploads', file.filename)
         file.save(file_path)
@@ -260,37 +299,29 @@ def upload_file():
         data = pd.read_csv(file_path, parse_dates=True, index_col="Date")
         data = data.dropna()
 
-        features = data[['Avg-Dis','rain', 'tmin', 'tmax']]
+        features = data[['Avg-Dis', 'rain', 'tmin', 'tmax']]
         target = data['Daily Runoff']
-        
+
         orig_feature_dim = features.shape[1]  # Original feature dimension (should be 4)
 
         scaler = MinMaxScaler()
         scaled_features = scaler.fit_transform(features)
         scaled_target = scaler.fit_transform(target.values.reshape(-1, 1))
-        
+
         # Special processing for pca-lstm model
         if model_type == 'pca-lstm':
-            # Apply actual PCA transformation first, following your Colab code
             from sklearn.decomposition import PCA
             n_components = 2
             pca = PCA(n_components=n_components)
             pca_features = pca.fit_transform(scaled_features)
-            
-            # Combine PCA features with target
+
             scaled_data = np.concatenate((pca_features, scaled_target), axis=1)
             input_size = n_components  # Input size is now the number of PCA components
-            
-            print(f"Applied PCA: Explained variance ratio: {pca.explained_variance_ratio_}")
-            model_name = "PCA-LSTM-Attention"
         else:
-            # For other models, use all features
             scaled_data = np.concatenate((scaled_features, scaled_target), axis=1)
             input_size = scaled_features.shape[1]  # Use original feature dimension
 
-        # Set window size based on model type
-        # window_size = 1 if model_type in ['lstm', 'pca-lstm'] else 7  # Use window size 7 for GRU and transformer
-        window_size = 7  # Use window size 7 for GRU and transformer
+        window_size = 1  # Use window size 7 for GRU and transformer
 
         def create_sequences(data, window_size):
             X, y = [], []
@@ -309,37 +340,54 @@ def upload_file():
 
         hidden_size = 50
         output_size = 1
-        
-        # Select model based on user choice
+
+        # Model initialization with proper cleanup
         if model_type == 'lstm':
+            if model is not None:
+                del model
             model = LSTMAttentionModel(input_size, hidden_size, output_size)
             model_name = "LSTM-Attention"
         elif model_type == 'gru':
+            if model is not None:
+                del model
             model = GRUAttentionModel(input_size, hidden_size, output_size)
             model_name = "GRU-Attention"
         elif model_type == 'pca-lstm':
-            # For PCA-LSTM, use the actual number of PCA components as input size
-            # This matches your Colab reference implementation
-            model = LSTMAttentionModel(
-                input_size=input_size,  # This is now 2 (n_components)
-                hidden_size=hidden_size, 
-                output_size=output_size
-            )
+            if model is not None:
+                del model
+            model = LSTMAttentionModel(input_size, hidden_size, output_size)
             model_name = "PCA-LSTM-Attention"
         elif model_type == 'enhanced_gru':
-            # Use the enhanced GRU model with hyperparameter tuning
+            if enhanced_model is not None:
+                del enhanced_model
             enhanced_model = EnhancedGRUModel(input_size, hidden_size, output_size)
             model, best_params = enhanced_model.train(train_loader, test_loader, epochs=100)
             model_name = f"Enhanced GRU-Attention (lr={best_params['lr']}, hidden={best_params['hidden_size']}, layers={best_params['num_layers']})"
         else:  # transformer
-            model = ImprovedTransformerModel(input_size, hidden_size, output_size)
+            if model is not None:
+                del model
+            model = TransformerModel(input_size, hidden_size, output_size)
             model_name = "Transformer"
 
+        # Clear existing optimizer and criterion
+        if optimizer is not None:
+            del optimizer
+        if criterion is not None:
+            del criterion
+
+        # Create new optimizer and criterion instances
         criterion = nn.MSELoss()
         optimizer = optim.Adam(model.parameters(), lr=0.001)
+        
+        # Clear any existing gradients
+        if model is not None:
+            model.zero_grad()
 
+        # Reset training loop variables
         epochs = 100
         train_losses = []
+
+        # Training loop
         for epoch in range(epochs):
             model.train()
             epoch_loss = 0
@@ -442,7 +490,8 @@ def upload_file():
         plt.savefig(residuals_plot_path)
         plt.close()
 
-        return jsonify({
+        # After creating the response
+        response = jsonify({
             'model_type': model_type,
             'window_size': window_size,
             'total_predicted_runoff': float(total_prunoff),
@@ -455,36 +504,70 @@ def upload_file():
             'bar_plot_url': '/' + bar_plot_path,
             'residuals_plot_url': '/' + residuals_plot_path
         })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        
+        return response
     finally:
-        training_lock.release()
+        # Cleanup in finally block to ensure it runs even if there's an error
+        if model is not None:
+            del model
+        if optimizer is not None:
+            del optimizer
+        if criterion is not None:
+            del criterion
+        if enhanced_model is not None:
+            del enhanced_model
+        
+        # Force cleanup
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
 
-@app.route('/generate_pdf', methods=['POST'])
-def generate_pdf():
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import letter
-    
-    # Get data from request
-    data = request.json
-    
-    # Create PDF
-    pdf_path = os.path.join('static', 'report.pdf')
-    c = canvas.Canvas(pdf_path, pagesize=letter)
-    
-    # Add content
-    c.setFont("Helvetica", 16)
-    c.drawString(72, 750, "Rainfall-Runoff Analysis Report")
-    
-    # Add metrics, plots, etc.
-    
-    c.save()
-    
-    return jsonify({'pdf_url': '/static/report.pdf'})
+def cleanup_modules():
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
 
 if __name__ == '__main__':
+    # Create required directories
     if not os.path.exists('uploads'):
         os.makedirs('uploads')
     if not os.path.exists('static'):
         os.makedirs('static')
+    
+    # Initialize model state variables
+    model = None
+    optimizer = None 
+    criterion = None
+    enhanced_model = None
+    
+    # Initial cleanup
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
+    
+    # Request cleanup middleware
+    @app.before_request
+    def cleanup_before_request():
+        global model, optimizer, criterion, enhanced_model
+        
+        # Clear model state
+        if model is not None:
+            del model
+            model = None
+        if optimizer is not None:
+            del optimizer
+            optimizer = None
+        if criterion is not None:
+            del criterion
+            criterion = None
+        if enhanced_model is not None:
+            del enhanced_model
+            enhanced_model = None
+            
+        # Force cleanup
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+    
+    # Start server
     app.run(debug=False, port=5500)
