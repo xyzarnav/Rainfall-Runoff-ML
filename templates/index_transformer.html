@@ -249,10 +249,23 @@
                         <div class="form-text text-muted">Upload your rainfall-runoff time series data in CSV format</div>
                     </div>
                     
+                    <!-- Replace the entire "Model Configuration" and "Transformer Architecture" sections with a simpler dropdown -->
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-6 mx-auto">
                             <div class="parameter-section">
-                                <h5 class="mb-3">Model Configuration</h5>
+                                <h5 class="mb-3">Model Selection</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="model_type" class="form-label">Select Transformer Model</label>
+                                    <select class="form-select" id="model_type" name="model_type">
+                                        <option value="standard_transformer">Standard Transformer</option>
+                                        <option value="informer">Informer</option>
+                                        <option value="autoformer">Autoformer</option>
+                                        <option value="pyraformer">Pyraformer</option>
+                                        <option value="reformer">Reformer</option>
+                                    </select>
+                                    <div class="parameter-info">Choose from various transformer architectures for time-series prediction</div>
+                                </div>
                                 
                                 <div class="mb-3">
                                     <label for="optimizer_type" class="form-label">Optimizer</label>
@@ -264,63 +277,15 @@
                                 </div>
                                 
                                 <div class="mb-3">
-                                    <label for="window_size" class="form-label">Window Size</label>
-                                    <input type="number" class="form-control" id="window_size" name="window_size" value="7" min="1" max="30">
-                                    <div class="parameter-info">Number of past time steps to consider for prediction</div>
-                                </div>
-                                
-                                <div class="mb-3">
                                     <label for="epochs" class="form-label">Training Epochs</label>
                                     <input type="number" class="form-control" id="epochs" name="epochs" value="100" min="10" max="500">
                                     <div class="parameter-info">Number of complete passes through the training dataset</div>
                                 </div>
                                 
                                 <div class="mb-3">
-                                    <label for="learning_rate" class="form-label">Learning Rate</label>
-                                    <input type="number" class="form-control" id="learning_rate" name="learning_rate" value="0.001" min="0.0001" max="0.1" step="0.0001">
-                                    <div class="parameter-info">Step size for gradient descent optimization</div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="weight_decay" class="form-label">Weight Decay</label>
-                                    <input type="number" class="form-control" id="weight_decay" name="weight_decay" value="0.0001" min="0" max="0.1" step="0.0001">
-                                    <div class="parameter-info">L2 regularization parameter to prevent overfitting</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="parameter-section">
-                                <h5 class="mb-3">Transformer Architecture</h5>
-                                
-                                <div class="mb-3">
-                                    <label for="d_model" class="form-label">Model Dimension (d_model)</label>
-                                    <input type="number" class="form-control" id="d_model" name="d_model" value="64" min="16" max="256" step="8">
-                                    <div class="parameter-info">Size of embeddings in transformer layers</div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="nhead" class="form-label">Number of Attention Heads</label>
-                                    <input type="number" class="form-control" id="nhead" name="nhead" value="4" min="1" max="16">
-                                    <div class="parameter-info">Number of parallel attention mechanisms</div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="num_encoder_layers" class="form-label">Number of Encoder Layers</label>
-                                    <input type="number" class="form-control" id="num_encoder_layers" name="num_encoder_layers" value="2" min="1" max="8">
-                                    <div class="parameter-info">Number of stacked transformer encoder layers</div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="dim_feedforward" class="form-label">Feedforward Network Size</label>
-                                    <input type="number" class="form-control" id="dim_feedforward" name="dim_feedforward" value="128" min="64" max="1024" step="64">
-                                    <div class="parameter-info">Dimension of the feedforward network in transformer</div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="dropout" class="form-label">Dropout Rate</label>
-                                    <input type="number" class="form-control" id="dropout" name="dropout" value="0.1" min="0" max="0.5" step="0.05">
-                                    <div class="parameter-info">Regularization to prevent overfitting</div>
+                                    <label for="window_size" class="form-label">Window Size</label>
+                                    <input type="number" class="form-control" id="window_size" name="window_size" value="7" min="1" max="30">
+                                    <div class="parameter-info">Number of past time steps to consider for prediction</div>
                                 </div>
                             </div>
                         </div>
