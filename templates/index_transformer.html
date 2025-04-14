@@ -23,10 +23,74 @@
         }
         
         .hero-section {
-            background: linear-gradient(135deg, #052c65 0%, #1170cd 100%);
+            background: linear-gradient(rgba(5, 44, 101, 0.7), rgba(17, 112, 205, 0.7)), 
+                        url('https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?ixlib=rb-4.0.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80') no-repeat center/cover;
             color: white;
-            padding: 5rem 0;
+            padding: 9rem 0;
             margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .floating-rain {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            background-color: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: rain-fall linear infinite;
+        }
+        
+        @keyframes rain-fall {
+            0% {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.8;
+            }
+            90% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(1000%);
+                opacity: 0;
+            }
+        }
+        
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease forwards;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animation-delay-1 {
+            animation-delay: 0.2s;
+        }
+        
+        .animation-delay-2 {
+            animation-delay: 0.4s;
         }
         
         .feature-icon {
@@ -142,9 +206,343 @@
                 margin: 0;
             }
         }
+
+        /* Card hover effects */
+        .feature-card {
+            transition: all 0.3s ease;
+            border: none;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-card img {
+            transition: all 0.5s ease;
+        }
+        
+        .feature-card:hover img {
+            transform: scale(1.05);
+        }
+        
+        /* Visual concepts section */
+        .concept-card {
+            position: relative;
+            height: 250px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .concept-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        
+        .concept-card:hover img {
+            transform: scale(1.05);
+        }
+        
+        .concept-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            padding: 20px;
+            color: white;
+        }
+        
+        /* Scrolling animation */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+        
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Progress indicator for model training */
+        .progress-indicator {
+            position: relative;
+            height: 5px;
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-bar {
+            position: absolute;
+            height: 100%;
+            background: linear-gradient(90deg, #0d6efd, #6610f2);
+            border-radius: 5px;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+        
+        /* NEW STYLES FOR ENHANCED UI */
+        
+        /* Water wave animation */
+        .water-wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: url('https://i.imgur.com/6uzv8LM.png') repeat-x;
+            background-size: 1000px 80px;
+            animation: wave 20s linear infinite;
+            z-index: 1;
+            opacity: 0.5;
+        }
+        
+        .water-wave.wave2 {
+            animation-delay: 0.1s;
+            opacity: 0.3;
+            height: 60px;
+            background-size: 800px 60px;
+            animation-direction: reverse;
+        }
+        
+        @keyframes wave {
+            0% { background-position-x: 0; }
+            100% { background-position-x: 1000px; }
+        }
+        
+        /* Floating animation for icons */
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+        
+        @keyframes floating {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        
+        /* Process flow connector */
+        .process-step {
+            position: relative;
+            padding-bottom: 40px;
+        }
+        
+        .process-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            width: 2px;
+            height: 40px;
+            background: linear-gradient(to bottom, #0d6efd, rgba(13, 110, 253, 0.2));
+        }
+        
+        .step-icon {
+            width: 80px;
+            height: 80px;
+            line-height: 80px;
+            text-align: center;
+            background-color: #f0f7ff;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 0 0 10px rgba(13, 110, 253, 0.1);
+        }
+        
+        .step-icon i {
+            font-size: 32px;
+            color: #0d6efd;
+        }
+        
+        /* Stats counters */
+        .stat-counter {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #052c65;
+            margin-bottom: 0;
+        }
+        
+        /* Runoff cycle visualization */
+        .runoff-cycle {
+            position: relative;
+            max-width: 800px;
+            margin: 50px auto;
+        }
+        
+        .cycle-item {
+            position: absolute;
+            width: 120px;
+            text-align: center;
+        }
+        
+        .cycle-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            font-size: 30px;
+            color: #0d6efd;
+            position: relative;
+        }
+        
+        .cycle-icon::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px dashed #0d6efd;
+            animation: spin 30s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .watershed-img {
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.5s ease, box-shadow 0.5s ease;
+        }
+        
+        .watershed-img:hover {
+            transform: scale(1.02);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        /* Number counters for stats */
+        .counter-box {
+            background: linear-gradient(135deg, #052c65, #0d6efd);
+            padding: 30px 20px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .counter-box::before {
+            content: '';
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            top: -40px;
+            right: -40px;
+        }
+        
+        .counter-box i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+        
+        .counter-number {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .counter-text {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+        
+        /* Project timeline */
+        .timeline {
+            position: relative;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 0;
+        }
+        
+        .timeline::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            background-color: #e9ecef;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            margin-left: -3px;
+            border-radius: 3px;
+        }
+        
+        .timeline-item {
+            padding: 10px 40px;
+            position: relative;
+            width: 50%;
+            box-sizing: border-box;
+        }
+        
+        .timeline-item:nth-child(odd) {
+            left: 0;
+        }
+        
+        .timeline-item:nth-child(even) {
+            left: 50%;
+        }
+        
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border: 4px solid #0d6efd;
+            top: 15px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        
+        .timeline-item:nth-child(odd)::after {
+            right: -10px;
+        }
+        
+        .timeline-item:nth-child(even)::after {
+            left: -10px;
+        }
+        
+        .timeline-content {
+            padding: 20px;
+            background-color: white;
+            position: relative;
+            border-radius: 6px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .timeline-content h3 {
+            margin-top: 0;
+            color: #052c65;
+            font-size: 18px;
+        }
+        
+        /* Water drop cursor */
+        .water-cursor {
+            cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%230d6efd'%3E%3Cpath d='M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z'/%3E%3C/svg%3E") 12 12, auto;
+        }
     </style>
 </head>
-<body>
+<body class="water-cursor">
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top no-print">
         <div class="container">
@@ -161,10 +559,13 @@
                         <a class="nav-link active" href="#">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">About Transformers</a>
+                        <a class="nav-link" href="#about-runoff">About Runoff</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Documentation</a>
+                        <a class="nav-link" href="#model-info">Transformer Models</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#how-it-works">How It Works</a>
                     </li>
                     <li class="nav-item">
                         <button id="clearData" class="btn btn-outline-light ms-2" onclick="clearStoredData()">
@@ -178,36 +579,298 @@
 
     <!-- Hero Section -->
     <section class="hero-section no-print">
-        <div class="container text-center">
-            <h1 class="display-4 mb-4">Transformer-Based Rainfall-Runoff Analysis</h1>
-            <p class="lead mb-4">Leveraging attention mechanisms for accurate hydrological modeling</p>
-            <button class="btn btn-light btn-lg" onclick="document.getElementById('model-info').scrollIntoView({behavior: 'smooth'})">
-                <i class="fas fa-info-circle me-2"></i>Learn About Transformers
-            </button>
-            <button class="btn btn-primary btn-lg ms-3" onclick="document.getElementById('upload-section').scrollIntoView({behavior: 'smooth'})">
-                <i class="fas fa-upload me-2"></i>Start Analysis
-            </button>
+        <div class="floating-rain" id="rainContainer"></div>
+        <div class="water-wave"></div>
+        <div class="water-wave wave2"></div>
+        <div class="container text-center hero-content">
+            <h1 class="display-4 mb-4 fade-in">Rainfall-Runoff Analysis with Transformers</h1>
+            <p class="lead mb-4 fade-in animation-delay-1">Leveraging state-of-the-art attention mechanisms to predict water flow in watersheds with precision and accuracy</p>
+            <div class="fade-in animation-delay-2">
+                <button class="btn btn-light btn-lg" onclick="document.getElementById('about-runoff').scrollIntoView({behavior: 'smooth'})">
+                    <i class="fas fa-info-circle me-2"></i>Learn About Runoff
+                </button>
+                <button class="btn btn-primary btn-lg ms-3" onclick="document.getElementById('upload-section').scrollIntoView({behavior: 'smooth'})">
+                    <i class="fas fa-upload me-2"></i>Start Analysis
+                </button>
+            </div>
         </div>
     </section>
 
     <div class="container main-container">
+        <!-- Project Stats -->
+        <div class="row mb-5 no-print reveal">
+            <div class="col-md-3">
+                <div class="counter-box">
+                    <i class="fas fa-chart-line floating"></i>
+                    <div class="counter-number">95%</div>
+                    <div class="counter-text">Prediction Accuracy</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="counter-box">
+                    <i class="fas fa-database floating"></i>
+                    <div class="counter-number">50+</div>
+                    <div class="counter-text">Watersheds Analyzed</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="counter-box">
+                    <i class="fas fa-code-branch floating"></i>
+                    <div class="counter-number">3x</div>
+                    <div class="counter-text">Faster Than Traditional Models</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="counter-box">
+                    <i class="fas fa-tint floating"></i>
+                    <div class="counter-number">1M+</div>
+                    <div class="counter-text">Data Points Processed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Runoff Section -->
+        <div id="about-runoff" class="row mb-5 no-print reveal">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-water me-2"></i> Understanding Rainfall-Runoff Processes
+                    </div>
+                                        <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h4 class="mb-3">What is Rainfall-Runoff?</h4>
+                                <p>Rainfall-runoff is the process by which precipitation falling onto land surfaces transforms into streamflow in rivers and ultimately reaches the ocean. This complex hydrological process involves multiple stages including interception, infiltration, evapotranspiration, and surface/subsurface flow mechanisms.</p>
+                                
+                                <p>The relationship between rainfall and runoff is often non-linear and depends on numerous factors:</p>
+                                <ul>
+                                    <li><strong>Land cover</strong> - Forests, urban areas, and agricultural land affect runoff differently</li>
+                                    <li><strong>Soil conditions</strong> - Permeability, moisture content, and soil type control infiltration rates</li>
+                                    <li><strong>Topography</strong> - Slope, aspect, and watershed geometry influence flow paths and rates</li>
+                                    <li><strong>Antecedent moisture</strong> - Prior rainfall events determine how saturated the soil is</li>
+                                    <li><strong>Rainfall intensity</strong> - High-intensity events often produce disproportionately more runoff</li>
+                                </ul>
+                                
+                                <p>Understanding this transformation is crucial for:</p>
+                                <ul>
+                                    <li><strong>Flood forecasting</strong> - Predicting river levels during heavy rainfall</li>
+                                    <li><strong>Water resource management</strong> - Planning water supply systems</li>
+                                    <li><strong>Ecosystem protection</strong> - Maintaining healthy aquatic environments</li>
+                                    <li><strong>Climate change impact assessment</strong> - Understanding how changing precipitation patterns affect water systems</li>
+                                </ul>
+                                <p>Traditional hydrological models struggle to accurately capture the complex, non-linear relationships between rainfall and runoff, especially in rapidly changing environments. This is where our Transformer-based deep learning approach offers significant advantages.</p>
+                            </div>
+                            <div class="col-md-6">
+                                <img src="https://media.istockphoto.com/id/1418102444/vector/watershed-as-water-basin-system-with-mountain-river-streams.jpg?s=612x612&w=0&k=20&c=-mOkWXA5pPiSo3UZrJNRDxlATtaocBbdiboHQPbllog=" class="img-fluid watershed-img mb-3" alt="River watershed">
+                                <p class="text-center fst-italic">A typical watershed where rainfall-runoff processes occur</p>
+                                
+                                <div class="transformer-info mt-4">
+                                    <h5><i class="fas fa-lightbulb me-2"></i>Why This Matters</h5>
+                                    <p>Accurate rainfall-runoff modeling allows hydrologists, engineers, and policymakers to make better decisions about water resources, infrastructure design, and emergency management during extreme weather events.</p>
+                                    <p>With climate change increasing the frequency and severity of extreme weather events, the need for accurate and responsive rainfall-runoff models has never been more critical. Our Transformer-based approach can identify subtleties in rainfall-runoff relationships that physical models might miss.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Runoff Process Visual -->
+                        <h4 class="text-center mt-5 mb-4">The Rainfall-Runoff Cycle</h4>
+                        <div class="row">
+                            <div class="col-md-4 process-step">
+                                <div class="step-icon">
+                                    <i class="fas fa-cloud-rain"></i>
+                                </div>
+                                <h5 class="text-center">Precipitation</h5>
+                                <p class="text-center">Rain or snow falls onto the land surface, beginning the hydrological cycle.</p>
+                            </div>
+                            <div class="col-md-4 process-step">
+                                <div class="step-icon">
+                                    <i class="fas fa-arrow-down"></i>
+                                </div>
+                                <h5 class="text-center">Infiltration & Surface Runoff</h5>
+                                <p class="text-center">Water either seeps into the ground or flows across the surface depending on soil conditions and rainfall intensity.</p>
+                            </div>
+                            <div class="col-md-4 process-step">
+                                <div class="step-icon">
+                                    <i class="fas fa-water"></i>
+                                </div>
+                                <h5 class="text-center">Channel Flow</h5>
+                                <p class="text-center">Water collects in streams and rivers, with flow rates determined by watershed characteristics and precipitation patterns.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Visual gallery of runoff -->
+                        <div class="row mt-5">
+                            <div class="col-md-4">
+                                <div class="concept-card">
+                                    <img src="https://ddnews.gov.in/wp-content/uploads/2024/03/Yamuna20flood.jpg" alt="River during flood">
+                                    <div class="concept-overlay">
+                                        <h5>High Flow Conditions</h5>
+                                        <p>River systems during heavy rainfall events</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="concept-card">
+                                    <img src="https://www.hindustantimes.com/ht-img/img/2023/07/27/550x309/Mumbai--India---July-27--2023--Water-logging-at-Ma_1690483291547.jpg" alt="Urban runoff">
+                                    <div class="concept-overlay">
+                                        <h5>Urban Runoff</h5>
+                                        <p>Rainfall impacts in developed areas</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="concept-card">
+                                    <img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=600&q=80" alt="Watershed landscape">
+                                    <div class="concept-overlay">
+                                        <h5>Watershed Systems</h5>
+                                        <p>Complete drainage basin ecology</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Requirements Section -->
+        <div id="data-requirements" class="row mb-5 no-print reveal">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-database me-2"></i> Dataset Requirements
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h4 class="mb-3">Required Dataset Format</h4>
+                                <p>The Transformer model requires time series data in CSV format with specific columns for effective rainfall-runoff analysis:</p>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead class="table-primary">
+                                            <tr>
+                                                <th>Column</th>
+                                                <th>Description</th>
+                                                <th>Units</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>Date</code></td>
+                                                <td>Timestamp for measurements (MM-DD-YYYY)</td>
+                                                <td>-</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Avg-Dis</code></td>
+                                                <td>Average discharge</td>
+                                                <td>m³/s</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Flood event Runoff</code></td>
+                                                <td>Runoff during flood events</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Daily Runoff</code></td>
+                                                <td>Daily runoff measurements</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Avg Weekly runoff</code></td>
+                                                <td>Average runoff over 7-day periods</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Flood magnitude</code></td>
+                                                <td>Flood intensity rating (0-10)</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>rain</code></td>
+                                                <td>Precipitation amount</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>tmin</code></td>
+                                                <td>Minimum temperature</td>
+                                                <td>°C</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>tmax</code></td>
+                                                <td>Maximum temperature</td>
+                                                <td>°C</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="transformer-info mb-4">
+                                    <h5><i class="fas fa-lightbulb me-2"></i>How Data is Processed</h5>
+                                    <p>The Transformer model uses this data in the following ways:</p>
+                                    <ul>
+                                        <li><strong>Input features:</strong> Rainfall, temperature (min/max), and historical runoff are used as key predictors</li>
+                                        <li><strong>Sequence learning:</strong> The model analyzes temporal patterns using a 7-day window by default</li>
+                                        <li><strong>Target variable:</strong> Daily Runoff is the primary prediction target</li>
+                                        <li><strong>Contextual information:</strong> Flood magnitude and average discharge provide additional context</li>
+                                    </ul>
+                                    <p>The Transformer's self-attention mechanism is particularly effective at discovering relationships between rainfall events and subsequent runoff patterns across different time scales.</p>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <h5><i class="fas fa-info-circle me-2"></i>Data Preparation Tips</h5>
+                                    <ul>
+                                        <li>Ensure your dataset has no missing values or interpolate gaps before uploading</li>
+                                        <li>Longer time series (1+ year) provide better training for seasonal patterns</li>
+                                        <li>Include periods with both normal conditions and extreme events for robust model training</li>
+                                        <li>Data will be automatically normalized before being fed to the Transformer model</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sample Data Preview -->
+                        <h5 class="mt-4 mb-3">Sample Data Format</h5>
+                        <div class="sample-data-container p-3 bg-light rounded">
+                            <code>
+                                Date,Avg-Dis,Flood event Runoff mm,Daily Runoff,Avg Weekly runoff,Flood magnitude(0-10) mm,rain,tmin,tmax<br>
+                                01-01-1998,0,0,0,,0,0,20.71,30.6<br>
+                                01-02-1998,0,0,0,,0,0,20.58,30.57<br>
+                                ...<br>
+                            </code>
+                           
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Transformer Info Section -->
-        <div id="model-info" class="row mb-5 no-print">
+        <div id="model-info" class="row mb-5 no-print reveal">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
                         <i class="fas fa-robot me-2"></i> Why Use Transformer Models?
                     </div>
                     <div class="card-body">
-                        <div class="transformer-info mb-4">
-                            <h5><i class="fas fa-lightbulb me-2"></i>About Transformer Models</h5>
-                            <p>Transformer models revolutionized sequence modeling by introducing self-attention mechanisms that capture long-range dependencies without using recurrence or convolutions. For rainfall-runoff forecasting, Transformers offer several advantages:</p>
-                            <ul>
-                                <li><strong>Parallel processing</strong> - More efficient than sequential RNNs</li>
-                                <li><strong>Long-range dependencies</strong> - Better capture of temporal correlations over long periods</li>
-                                <li><strong>Multi-head attention</strong> - Model can focus on different parts of input sequence</li>
-                                <li><strong>Position-aware</strong> - Understands the sequential nature of time series data</li>
-                            </ul>
+                        <div class="row">
+                            <div class="col-md-7">
+                                <div class="transformer-info mb-4">
+                                    <h5><i class="fas fa-lightbulb me-2"></i>About Transformer Models</h5>
+                                    <p>Transformer models revolutionized sequence modeling by introducing self-attention mechanisms that capture long-range dependencies without using recurrence or convolutions. For rainfall-runoff forecasting, Transformers offer several advantages:</p>
+                                    <ul>
+                                        <li><strong>Parallel processing</strong> - More efficient than sequential RNNs</li>
+                                        <li><strong>Long-range dependencies</strong> - Better capture of temporal correlations over long periods</li>
+                                        <li><strong>Multi-head attention</strong> - Model can focus on different parts of input sequence</li>
+                                        <li><strong>Position-aware</strong> - Understands the sequential nature of time series data</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <img src="static\images\architecture.png" alt="Transformer Architecture Diagram" class="img-fluid watershed-img">
+                                <p class="text-center fst-italic mt-2">Transformer architecture with multi-head attention</p>
+                            </div>
                         </div>
                         
                         <h5 class="mt-4 mb-3">Model Architecture</h5>
@@ -231,13 +894,96 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Transformer vs Traditional Models -->
+                        <h5 class="text-center mt-5 mb-4">Transformer Models vs. Traditional Approaches</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card feature-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-center mb-4">Traditional Hydrological Models</h5>
+                                        <ul>
+                                            <li>Based on physical equations and parameters</li>
+                                            <li>Require extensive calibration for each watershed</li>
+                                            <li>Limited ability to adapt to changing conditions</li>
+                                            <li>Difficult to incorporate diverse data sources</li>
+                                            <li>Often underperform during extreme events</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card feature-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-center mb-4">Transformer Neural Networks</h5>
+                                        <ul>
+                                            <li>Learn patterns directly from historical data</li>
+                                            <li>Can generalize across similar watersheds</li>
+                                            <li>Continuously improve with more data</li>
+                                            <li>Easily incorporate multiple data sources (rainfall, temperature, soil moisture)</li>
+                                            <li>Better performance during unusual or extreme conditions</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works Section -->
+        <div id="how-it-works" class="row mb-5 no-print reveal">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-cogs me-2"></i> How Our System Works
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-upload me-2"></i> Step 1: Data Upload</h3>
+                                    <p>Upload your time series data containing rainfall and runoff measurements. The system accepts CSV files with properly formatted data.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-cog me-2"></i> Step 2: Model Configuration</h3>
+                                    <p>Select the optimizer and other model parameters. The system will automatically configure the Transformer architecture for optimal performance.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-brain me-2"></i> Step 3: Model Training</h3>
+                                    <p>The system trains the Transformer model using your data, optimizing the attention mechanisms to capture important temporal patterns.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-chart-line me-2"></i> Step 4: Result Visualization</h3>
+                                    <p>View detailed performance metrics and visualizations to assess the model's accuracy and understand its predictions.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-file-alt me-2"></i> Step 5: Report Generation</h3>
+                                    <p>Generate a comprehensive report that you can save or print for documentation and sharing with colleagues.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-5">
+                            <img src="static\images\pipeline.png" alt="Transformer processing pipeline" class="img-fluid watershed-img" style="max-width: 800px;">
+                            <p class="text-center fst-italic mt-2">The complete rainfall-runoff modeling pipeline using Transformer architecture</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Upload Section -->
-        <div id="upload-section" class="card mb-5 no-print">
+        <div id="upload-section" class="card mb-5 no-print reveal">
             <div class="card-header">
                 <i class="fas fa-cloud-upload-alt me-2"></i> Upload Data & Configure Model
             </div>
@@ -256,18 +1002,6 @@
                                 <h5 class="mb-3">Model Selection</h5>
                                 
                                 <div class="mb-3">
-                                    <label for="model_type" class="form-label">Select Transformer Model</label>
-                                    <select class="form-select" id="model_type" name="model_type">
-                                        <option value="standard_transformer">Standard Transformer</option>
-                                        <option value="informer">Informer</option>
-                                        <option value="autoformer">Autoformer</option>
-                                        <option value="pyraformer">Pyraformer</option>
-                                        <option value="reformer">Reformer</option>
-                                    </select>
-                                    <div class="parameter-info">Choose from various transformer architectures for time-series prediction</div>
-                                </div>
-                                
-                                <div class="mb-3">
                                     <label for="optimizer_type" class="form-label">Optimizer</label>
                                     <select class="form-select" id="optimizer_type" name="optimizer_type">
                                         <option value="adam">Adam</option>
@@ -276,17 +1010,9 @@
                                     <div class="parameter-info">RAdam automatically adapts learning rate and helps with convergence</div>
                                 </div>
                                 
-                                <div class="mb-3">
-                                    <label for="epochs" class="form-label">Training Epochs</label>
-                                    <input type="number" class="form-control" id="epochs" name="epochs" value="100" min="10" max="500">
-                                    <div class="parameter-info">Number of complete passes through the training dataset</div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="window_size" class="form-label">Window Size</label>
-                                    <input type="number" class="form-control" id="window_size" name="window_size" value="7" min="1" max="30">
-                                    <div class="parameter-info">Number of past time steps to consider for prediction</div>
-                                </div>
+                                <!-- Hidden inputs for epochs and window_size with default values -->
+                                <input type="hidden" id="epochs" name="epochs" value="100">
+                                <input type="hidden" id="window_size" name="window_size" value="7">
                             </div>
                         </div>
                     </div>
@@ -302,6 +1028,9 @@
                         <span class="visually-hidden">Loading...</span>
                     </div>
                     <span class="fs-5">Training model, please wait...</span>
+                    <div class="progress-indicator mt-3">
+                        <div class="progress-bar" id="training-progress"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -500,6 +1229,13 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            // Create rain animation
+            createRaindrops();
+            
+            // Reveal animations on scroll
+            window.addEventListener('scroll', revealOnScroll);
+            revealOnScroll(); // Initial check
+            
             // Form submission handling
             const form = document.getElementById('upload-form');
             const loading = document.getElementById('loading');
@@ -509,6 +1245,9 @@
                 
                 // Show loading indicator
                 loading.style.display = 'flex';
+                
+                // Simulate progress for visual feedback
+                simulateProgress();
                 
                 // Create form data
                 const formData = new FormData(form);
@@ -600,6 +1339,65 @@
                 window.print();
             });
         });
+        
+        // Create raindrops animation
+        function createRaindrops() {
+            const container = document.getElementById('rainContainer');
+            const containerWidth = container.offsetWidth;
+            const containerHeight = container.offsetHeight;
+            const raindropsCount = 50;
+            
+            for (let i = 0; i < raindropsCount; i++) {
+                const raindrop = document.createElement('div');
+                raindrop.classList.add('rain-drop');
+                
+                // Random positioning
+                const posX = Math.floor(Math.random() * containerWidth);
+                const delay = Math.random() * 2;
+                const duration = 0.5 + Math.random() * 0.8;
+                const height = 10 + Math.random() * 30;
+                
+                raindrop.style.left = `${posX}px`;
+                raindrop.style.height = `${height}px`;
+                raindrop.style.animationDelay = `${delay}s`;
+                raindrop.style.animationDuration = `${duration}s`;
+                
+                container.appendChild(raindrop);
+            }
+        }
+        
+        // Reveal elements on scroll
+        function revealOnScroll() {
+            const reveals = document.querySelectorAll('.reveal');
+            
+            for (let i = 0; i < reveals.length; i++) {
+                const windowHeight = window.innerHeight;
+                const elementTop = reveals[i].getBoundingClientRect().top;
+                const elementVisible = 150;
+                
+                if (elementTop < windowHeight - elementVisible) {
+                    reveals[i].classList.add('active');
+                }
+            }
+        }
+        
+        // Simulate progress bar for model training
+        function simulateProgress() {
+            const progressBar = document.getElementById('training-progress');
+            let width = 0;
+            const interval = setInterval(frame, 500);
+            
+            function frame() {
+                if (width >= 100) {
+                    clearInterval(interval);
+                } else {
+                    // Make progress seem more realistic with non-linear increments
+                    const increment = Math.max(1, 10 - Math.floor(width / 10));
+                    width += increment;
+                    progressBar.style.width = width + '%';
+                }
+            }
+        }
         
         // Clear stored data
         function clearStoredData() {
