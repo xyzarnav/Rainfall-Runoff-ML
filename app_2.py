@@ -620,6 +620,199 @@ def clear_session():
             'error': str(e)
         }), 500
 
+def compare_optimizers(file_path, num_runs=5):
+    """
+    Compare Adam and RAdam performance across multiple runs
+    
+    Args:
+        file_path: Path to the rainfall-runoff data CSV
+        num_runs: Number of training runs to perform for each optimizer
+    
+    Returns:
+        Dictionary with performance metrics for each optimizer
+    """
+    results = {
+        'adam': {'mse': [], 'mae': [], 'r2': [], 'total_predicted': [], 'total_actual': []},
+        'radam': {'mse': [], 'mae': [], 'r2': [], 'total_predicted': [], 'total_actual': []}
+    }
+    
+    for optimizer_type in ['adam', 'radam']:
+        for run in range(num_runs):
+            # Set different random seed for each run
+            set_seed(42 + run)
+            
+            # Call your existing training function with the optimizer type
+            # Extract the metrics from the output
+            metrics = train_model(
+                file_path=file_path,
+                window_size=7,
+                optimizer_type=optimizer_type,
+                epochs=100
+            )
+            
+            # Store metrics
+            results[optimizer_type]['mse'].append(metrics['mse'])
+            results[optimizer_type]['mae'].append(metrics['mae'])
+            results[optimizer_type]['r2'].append(metrics['r2_score'])
+            results[optimizer_type]['total_predicted'].append(metrics['total_predicted_runoff'])
+            results[optimizer_type]['total_actual'].append(metrics['total_actual_runoff'])
+    
+    # Calculate average metrics
+    for opt in results:
+        for metric in results[opt]:
+            results[opt][f'avg_{metric}'] = sum(results[opt][metric]) / len(results[opt][metric])
+    
+    return results
+
+def visualize_optimizer_comparison(results):
+    """
+    Create visualization comparing Adam vs RAdam performance
+    
+    Args:
+        results: Dictionary with performance metrics from compare_optimizers()
+    """
+    # Create figure
+    plt.figure(figsize=(14, 10))
+    
+    # Metrics to compare
+    metrics = ['mse', 'mae', 'r2']
+    titles = ['Mean Squared Error (lower is better)', 
+              'Mean Absolute Error (lower is better)', 
+              'R² Score (higher is better)']
+    
+    for i, (metric, title) in enumerate(zip(metrics, titles)):
+        plt.subplot(2, 2, i+1)
+        
+        # Extract data
+        adam_values = results['adam'][metric]
+        radam_values = results['radam'][metric]
+        
+        # Create boxplot
+        data = [adam_values, radam_values]
+        bp = plt.boxplot(data, labels=['Adam', 'RAdam'], patch_artist=True)
+        
+        # Color boxes
+        colors = ['lightblue', 'lightgreen']
+        for patch, color in zip(bp['boxes'], colors):
+            patch.set_facecolor(color)
+        
+        # Add individual points
+        for j, d in enumerate([adam_values, radam_values]):
+            x = np.random.normal(j+1, 0.04, size=len(d))
+            plt.scatter(x, d, alpha=0.7, s=30)
+        
+        # Add means as horizontal lines
+        plt.axhline(y=results['adam'][f'avg_{metric}'], color='blue', linestyle='--', alpha=0.5)
+        plt.axhline(y=results['radam'][f'avg_{metric}'], color='green', linestyle='--', alpha=0.5)
+        
+        plt.title(title)
+        plt.grid(True, alpha=0.3)
+    
+    # Add summary subplot
+    plt.subplot(2, 2, 4)
+    
+    # Compute improvement percentage
+    improvements = {
+        'MSE': (results['adam']['avg_mse'] - results['radam']['avg_mse']) / results['adam']['avg_mse'] * 100,
+        'MAE': (results['adam']['avg_mae'] - results['radam']['avg_mae']) / results['adam']['avg_mae'] * 100,
+        'R²': (results['radam']['avg_r2'] - results['adam']['avg_r2']) / results['adam']['avg_r2'] * 100
+    }
+    
+    # Create bar chart for improvements
+    bars = plt.bar(list(improvements.keys()), list(improvements.values()), color=['green' if v > 0 else 'red' for v in improvements.values()])
+    plt.axhline(y=0, color='black', linestyle='-', alpha=0.3)
+    plt.title('RAdam Improvement Over Adam (%)')
+    plt.ylabel('Improvement %')
+    
+    # Add value labels on bars
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., 
+                 height + (1 if height >= 0 else -3),
+                 f'{height:.1f}%',
+                 ha='center', va='bottom' if height >= 0 else 'top')
+    
+    plt.tight_layout()
+    plt.savefig('static/optimizer_comparison.png', dpi=300)
+    plt.close()
+    
+    return 'static/optimizer_comparison.png'
+
+def compare_residual_distributions(file_path):
+    """
+    Compare residual distributions between Adam and RAdam optimizers
+    
+    Args:
+        file_path: Path to the rainfall-runoff data CSV
+    """
+    # Train models and get predictions
+    adam_results = train_model(file_path, optimizer_type='adam')
+    radam_results = train_model(file_path, optimizer_type='radam')
+    
+    # Create figure for residual comparison
+    plt.figure(figsize=(12, 6))
+    
+    # Adam residuals
+    plt.subplot(1, 2, 1)
+    sns.histplot(adam_results['residuals'], kde=True, color='blue')
+    plt.xlabel('Residuals (m³/s)')
+    plt.ylabel('Count')
+    plt.title('Adam Optimizer Residuals')
+    
+    # Add standard deviation and mean annotations
+    adam_std = np.std(adam_results['residuals'])
+    adam_mean = np.mean(adam_results['residuals'])
+    plt.axvline(adam_mean, color='red', linestyle='--')
+    plt.text(0.05, 0.95, f'σ: {adam_std:.4f}\nμ: {adam_mean:.4f}', 
+             transform=plt.gca().transAxes, bbox=dict(facecolor='white', alpha=0.8))
+    
+    # RAdam residuals
+    plt.subplot(1, 2, 2)
+    sns.histplot(radam_results['residuals'], kde=True, color='green')
+    plt.xlabel('Residuals (m³/s)')
+    plt.ylabel('Count')
+    plt.title('RAdam Optimizer Residuals')
+    
+    # Add standard deviation and mean annotations
+    radam_std = np.std(radam_results['residuals'])
+    radam_mean = np.mean(radam_results['residuals'])
+    plt.axvline(radam_mean, color='red', linestyle='--')
+    plt.text(0.05, 0.95, f'σ: {radam_std:.4f}\nμ: {radam_mean:.4f}', 
+             transform=plt.gca().transAxes, bbox=dict(facecolor='white', alpha=0.8))
+    
+    plt.tight_layout()
+    plt.savefig('static/residual_comparison.png', dpi=300)
+    plt.close()
+    
+    return 'static/residual_comparison.png'
+
+@app.route('/compare_optimizers', methods=['POST'])
+def optimizer_comparison():
+    try:
+        file = request.files['file']
+        file_path = os.path.join('uploads', file.filename)
+        os.makedirs('uploads', exist_ok=True)
+        file.save(file_path)
+        
+        # Run comparison
+        results = compare_optimizers(file_path)
+        
+        # Generate visualization
+        comparison_img = visualize_optimizer_comparison(results)
+        residuals_img = compare_residual_distributions(file_path)
+        
+        return jsonify({
+            'comparison_plot': '/' + comparison_img,
+            'residuals_comparison': '/' + residuals_img,
+            'summary': {
+                'adam': {k: results['adam'][f'avg_{k}'] for k in ['mse', 'mae', 'r2']},
+                'radam': {k: results['radam'][f'avg_{k}'] for k in ['mse', 'mae', 'r2']}
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     # Create necessary directories
     os.makedirs('uploads', exist_ok=True)
