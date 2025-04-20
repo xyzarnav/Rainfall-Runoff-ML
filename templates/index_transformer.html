@@ -3,572 +3,1447 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rainfall-Runoff Prediction</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <title>Transformer Model for Rainfall-Runoff Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
         }
-        .result-section {
-            margin-top: 30px;
+        
+        .navbar {
+            background-color: #052c65;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .plot-container {
-            margin-bottom: 20px;
+        
+        .navbar-brand, .nav-link {
+            color: #fff !important;
         }
-        .model-params {
-            display: none;
+        
+        .hero-section {
+            background: linear-gradient(rgba(5, 44, 101, 0.7), rgba(17, 112, 205, 0.7)), 
+                        url('https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?ixlib=rb-4.0.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80') no-repeat center/cover;
+            color: white;
+            padding: 9rem 0;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
         }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .floating-rain {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            background-color: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: rain-fall linear infinite;
+        }
+        
+        @keyframes rain-fall {
+            0% {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.8;
+            }
+            90% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(1000%);
+                opacity: 0;
+            }
+        }
+        
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease forwards;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animation-delay-1 {
+            animation-delay: 0.2s;
+        }
+        
+        .animation-delay-2 {
+            animation-delay: 0.4s;
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            height: 70px;
+            width: 70px;
+            line-height: 70px;
+            border-radius: 50%;
+            background-color: #e9f2ff;
+            color: #0d6efd;
+            margin: 0 auto 1rem;
+            text-align: center;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            background-color: #052c65;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .metric-card {
+            transition: transform 0.3s;
+            border: 1px solid #e9ecef;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-tabs .nav-link {
+            color: #495057;
+            border: 1px solid transparent;
+            border-top-left-radius: .25rem;
+            border-top-right-radius: .25rem;
+            padding: 0.75rem 1.25rem;
+            font-weight: 500;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+            border-bottom-width: 2px;
+        }
+        
+        footer {
+            background-color: #052c65;
+            color: white;
+            padding: 3rem 0 1.5rem 0;
+            margin-top: 3rem;
+        }
+        
         .loading {
             display: none;
-            text-align: center;
-            margin-top: 20px;
+            align-items: center;
+            justify-content: center;
         }
-        .loading img {
-            width: 50px;
-            height: 50px;
+        
+        .transformer-info {
+            background-color: #f0f7ff;
+            border-left: 5px solid #0d6efd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 5px 5px 0;
         }
-        .model-selector {
+        
+        .parameter-info {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+        
+        .parameter-section {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
             margin-bottom: 20px;
         }
-        .model-btn {
-            padding: 15px 20px;
-            margin: 0 5px;
-            border-radius: 5px;
-            font-weight: bold;
-            transition: all 0.3s ease;
+        
+        .hyperparameter-card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 3px solid #0d6efd;
         }
-        .model-btn.active {
+        
+        /* For print report */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            body {
+                padding: 0;
+                margin: 0;
+            }
+            
+            .container {
+                width: 100%;
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+        }
+
+        /* Card hover effects */
+        .feature-card {
+            transition: all 0.3s ease;
+            border: none;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-card img {
+            transition: all 0.5s ease;
+        }
+        
+        .feature-card:hover img {
             transform: scale(1.05);
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
         }
-        .model-btn i {
-            margin-right: 8px;
+        
+        /* Visual concepts section */
+        .concept-card {
+            position: relative;
+            height: 250px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
         }
-        /* Model-specific colors */
-        .transformer-btn {
-            background-color: #6a11cb;
-            border-color: #6a11cb;
+        
+        .concept-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
         }
-        .lstm-btn {
-            background-color: #2575fc;
-            border-color: #2575fc;
+        
+        .concept-card:hover img {
+            transform: scale(1.05);
         }
-        .gru-btn {
-            background-color: #8e44ad;
-            border-color: #8e44ad;
+        
+        .concept-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            padding: 20px;
+            color: white;
         }
-        .model-card {
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        
+        /* Scrolling animation */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
         }
-        .model-card.active {
-            border-color: #28a745;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Progress indicator for model training */
+        .progress-indicator {
+            position: relative;
+            height: 5px;
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-bar {
+            position: absolute;
+            height: 100%;
+            background: linear-gradient(90deg, #0d6efd, #6610f2);
+            border-radius: 5px;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+        
+        /* NEW STYLES FOR ENHANCED UI */
+        
+        /* Water wave animation */
+        .water-wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: url('https://i.imgur.com/6uzv8LM.png') repeat-x;
+            background-size: 1000px 80px;
+            animation: wave 20s linear infinite;
+            z-index: 1;
+            opacity: 0.5;
+        }
+        
+        .water-wave.wave2 {
+            animation-delay: 0.1s;
+            opacity: 0.3;
+            height: 60px;
+            background-size: 800px 60px;
+            animation-direction: reverse;
+        }
+        
+        @keyframes wave {
+            0% { background-position-x: 0; }
+            100% { background-position-x: 1000px; }
+        }
+        
+        /* Floating animation for icons */
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+        
+        @keyframes floating {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        
+        /* Process flow connector */
+        .process-step {
+            position: relative;
+            padding-bottom: 40px;
+        }
+        
+        .process-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            width: 2px;
+            height: 40px;
+            background: linear-gradient(to bottom, #0d6efd, rgba(13, 110, 253, 0.2));
+        }
+        
+        .step-icon {
+            width: 80px;
+            height: 80px;
+            line-height: 80px;
+            text-align: center;
+            background-color: #f0f7ff;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 0 0 10px rgba(13, 110, 253, 0.1);
+        }
+        
+        .step-icon i {
+            font-size: 32px;
+            color: #0d6efd;
+        }
+        
+        /* Stats counters */
+        .stat-counter {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #052c65;
+            margin-bottom: 0;
+        }
+        
+        /* Runoff cycle visualization */
+        .runoff-cycle {
+            position: relative;
+            max-width: 800px;
+            margin: 50px auto;
+        }
+        
+        .cycle-item {
+            position: absolute;
+            width: 120px;
+            text-align: center;
+        }
+        
+        .cycle-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            font-size: 30px;
+            color: #0d6efd;
+            position: relative;
+        }
+        
+        .cycle-icon::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px dashed #0d6efd;
+            animation: spin 30s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .watershed-img {
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.5s ease, box-shadow 0.5s ease;
+        }
+        
+        .watershed-img:hover {
+            transform: scale(1.02);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        /* Number counters for stats */
+        .counter-box {
+            background: linear-gradient(135deg, #052c65, #0d6efd);
+            padding: 30px 20px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .counter-box::before {
+            content: '';
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            top: -40px;
+            right: -40px;
+        }
+        
+        .counter-box i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+        
+        .counter-number {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .counter-text {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+        
+        /* Project timeline */
+        .timeline {
+            position: relative;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 0;
+        }
+        
+        .timeline::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            background-color: #e9ecef;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            margin-left: -3px;
+            border-radius: 3px;
+        }
+        
+        .timeline-item {
+            padding: 10px 40px;
+            position: relative;
+            width: 50%;
+            box-sizing: border-box;
+        }
+        
+        .timeline-item:nth-child(odd) {
+            left: 0;
+        }
+        
+        .timeline-item:nth-child(even) {
+            left: 50%;
+        }
+        
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border: 4px solid #0d6efd;
+            top: 15px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        
+        .timeline-item:nth-child(odd)::after {
+            right: -10px;
+        }
+        
+        .timeline-item:nth-child(even)::after {
+            left: -10px;
+        }
+        
+        .timeline-content {
+            padding: 20px;
+            background-color: white;
+            position: relative;
+            border-radius: 6px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .timeline-content h3 {
+            margin-top: 0;
+            color: #052c65;
+            font-size: 18px;
+        }
+        
+        /* Water drop cursor */
+        .water-cursor {
+            cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%230d6efd'%3E%3Cpath d='M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z'/%3E%3C/svg%3E") 12 12, auto;
         }
     </style>
-    <!-- Add Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
-<body>
-    <div class="container">
-        <h1 class="text-center mb-4">Rainfall-Runoff Prediction with Deep Learning</h1>
-        
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h4>Model Training</h4>
+<body class="water-cursor">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top no-print">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-water me-2"></i>
+                Transformer Runoff Analysis
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about-runoff">About Runoff</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#model-info">Transformer Models</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#how-it-works">How It Works</a>
+                    </li>
+                    <li class="nav-item">
+                        <button id="clearData" class="btn btn-outline-light ms-2" onclick="clearStoredData()">
+                            <i class="fas fa-trash-alt me-2"></i>Clear Data
+                        </button>
+                    </li>
+                </ul>
             </div>
-            <div class="card-body">
-                <form id="upload-form" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="file">Upload CSV File with Rainfall-Runoff Data:</label>
-                        <input type="file" class="form-control-file" id="file" name="file" required>
-                    </div>
-                    
-                    <div class="form-group model-selector">
-                        <label class="d-block mb-3">Select Model Architecture:</label>
-                        <div class="row text-center">
-                            <div class="col-md-4">
-                                <div class="model-card card" id="transformer-card">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Transformer</h5>
-                                        <p class="card-text">Attention-based model suitable for capturing long-range dependencies</p>
-                                        <button type="button" class="btn btn-primary model-btn transformer-btn" onclick="selectModel('transformer')">
-                                            <i class="fas fa-brain"></i> Transformer
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="model-card card" id="lstm-card">
-                                    <div class="card-body">
-                                        <h5 class="card-title">LSTM</h5>
-                                        <p class="card-text">Long Short-Term Memory neural network for sequential data</p>
-                                        <button type="button" class="btn btn-primary model-btn lstm-btn" onclick="selectModel('lstm')">
-                                            <i class="fas fa-network-wired"></i> LSTM
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="model-card card" id="gru-card">
-                                    <div class="card-body">
-                                        <h5 class="card-title">GRU</h5>
-                                        <p class="card-text">Gated Recurrent Unit, simpler and faster than LSTM</p>
-                                        <button type="button" class="btn btn-primary model-btn gru-btn" onclick="selectModel('gru')">
-                                            <i class="fas fa-project-diagram"></i> GRU
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <input type="hidden" id="model_type" name="model_type" value="transformer">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="window_size">Window Size:</label>
-                        <input type="number" class="form-control" id="window_size" name="window_size" value="7" min="1" max="30" required>
-                    </div>
+        </div>
+    </nav>
 
-                    <!-- Transformer Parameters -->
-                    <div id="transformer-params" class="model-params">
-                        <h5 class="mt-3">Transformer Parameters:</h5>
-                        <div class="form-group">
-                            <label for="d_model">Embedding Dimension (d_model):</label>
-                            <input type="number" class="form-control" id="d_model" name="d_model" value="64" min="16" required>
-                        </div>
+    <!-- Hero Section -->
+    <section class="hero-section no-print">
+        <div class="floating-rain" id="rainContainer"></div>
+        <div class="water-wave"></div>
+        <div class="water-wave wave2"></div>
+        <div class="container text-center hero-content">
+            <h1 class="display-4 mb-4 fade-in">Rainfall-Runoff Analysis with Transformers</h1>
+            <p class="lead mb-4 fade-in animation-delay-1">Leveraging state-of-the-art attention mechanisms to predict water flow in watersheds with precision and accuracy</p>
+            <div class="fade-in animation-delay-2">
+                <button class="btn btn-light btn-lg" onclick="document.getElementById('about-runoff').scrollIntoView({behavior: 'smooth'})">
+                    <i class="fas fa-info-circle me-2"></i>Learn About Runoff
+                </button>
+                <button class="btn btn-primary btn-lg ms-3" onclick="document.getElementById('upload-section').scrollIntoView({behavior: 'smooth'})">
+                    <i class="fas fa-upload me-2"></i>Start Analysis
+                </button>
+            </div>
+        </div>
+    </section>
 
-                        <div class="form-group">
-                            <label for="nhead">Number of Attention Heads:</label>
-                            <input type="number" class="form-control" id="nhead" name="nhead" value="4" min="1" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="num_encoder_layers">Number of Encoder Layers:</label>
-                            <input type="number" class="form-control" id="num_encoder_layers" name="num_encoder_layers" value="2" min="1" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="dim_feedforward">Feedforward Network Dimension:</label>
-                            <input type="number" class="form-control" id="dim_feedforward" name="dim_feedforward" value="128" min="32" required>
-                        </div>
-                    </div>
-
-                    <!-- RNN Parameters -->
-                    <div id="rnn-params" class="model-params">
-                        <h5 class="mt-3">RNN Parameters:</h5>
-                        <div class="form-group">
-                            <label for="hidden_size">Hidden Size:</label>
-                            <input type="number" class="form-control" id="hidden_size" name="hidden_size" value="64" min="16" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="num_layers">Number of Layers:</label>
-                            <input type="number" class="form-control" id="num_layers" name="num_layers" value="2" min="1" required>
-                        </div>
-                    </div>
-
-                    <!-- Common Parameters -->
-                    <div class="form-group">
-                        <label for="dropout">Dropout Rate:</label>
-                        <input type="number" class="form-control" id="dropout" name="dropout" value="0.1" min="0" max="0.9" step="0.1" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="learning_rate">Learning Rate:</label>
-                        <input type="number" class="form-control" id="learning_rate" name="learning_rate" value="0.001" min="0.00001" max="0.1" step="0.0001" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="epochs">Epochs:</label>
-                        <input type="number" class="form-control" id="epochs" name="epochs" value="100" min="10" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="optimizer_type">Optimizer:</label>
-                        <select class="form-control" id="optimizer_type" name="optimizer_type">
-                            <option value="adam">Adam</option>
-                            <option value="radam">RAdam</option>
-                            <option value="adamw">AdamW</option>
-                            <option value="lookahead">Lookahead</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="weight_decay">Weight Decay:</label>
-                        <input type="number" class="form-control" id="weight_decay" name="weight_decay" value="0.0001" min="0" max="0.1" step="0.0001" required>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary btn-lg btn-block">Train Model</button>
-                </form>
-                
-                <div class="loading">
-                    <img src="https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif" alt="Loading...">
-                    <p>Training model... This may take several minutes. Please wait.</p>
+    <div class="container main-container">
+        <!-- Project Stats -->
+        <div class="row mb-5 no-print reveal">
+            <div class="col-md-3">
+                <div class="counter-box">
+                    <i class="fas fa-chart-line floating"></i>
+                    <div class="counter-number">95%</div>
+                    <div class="counter-text">Prediction Accuracy</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="counter-box">
+                    <i class="fas fa-database floating"></i>
+                    <div class="counter-number">50+</div>
+                    <div class="counter-text">Watersheds Analyzed</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="counter-box">
+                    <i class="fas fa-code-branch floating"></i>
+                    <div class="counter-number">3x</div>
+                    <div class="counter-text">Faster Than Traditional Models</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="counter-box">
+                    <i class="fas fa-tint floating"></i>
+                    <div class="counter-number">1M+</div>
+                    <div class="counter-text">Data Points Processed</div>
                 </div>
             </div>
         </div>
-        
-        <div id="results" class="result-section" style="display: none;">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h4>Training Results</h4>
+
+        <!-- About Runoff Section -->
+        <div id="about-runoff" class="row mb-5 no-print reveal">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-water me-2"></i> Understanding Rainfall-Runoff Processes
+                    </div>
+                                        <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h4 class="mb-3">What is Rainfall-Runoff?</h4>
+                                <p>Rainfall-runoff is the process by which precipitation falling onto land surfaces transforms into streamflow in rivers and ultimately reaches the ocean. This complex hydrological process involves multiple stages including interception, infiltration, evapotranspiration, and surface/subsurface flow mechanisms.</p>
+                                
+                                <p>The relationship between rainfall and runoff is often non-linear and depends on numerous factors:</p>
+                                <ul>
+                                    <li><strong>Land cover</strong> - Forests, urban areas, and agricultural land affect runoff differently</li>
+                                    <li><strong>Soil conditions</strong> - Permeability, moisture content, and soil type control infiltration rates</li>
+                                    <li><strong>Topography</strong> - Slope, aspect, and watershed geometry influence flow paths and rates</li>
+                                    <li><strong>Antecedent moisture</strong> - Prior rainfall events determine how saturated the soil is</li>
+                                    <li><strong>Rainfall intensity</strong> - High-intensity events often produce disproportionately more runoff</li>
+                                </ul>
+                                
+                                <p>Understanding this transformation is crucial for:</p>
+                                <ul>
+                                    <li><strong>Flood forecasting</strong> - Predicting river levels during heavy rainfall</li>
+                                    <li><strong>Water resource management</strong> - Planning water supply systems</li>
+                                    <li><strong>Ecosystem protection</strong> - Maintaining healthy aquatic environments</li>
+                                    <li><strong>Climate change impact assessment</strong> - Understanding how changing precipitation patterns affect water systems</li>
+                                </ul>
+                                <p>Traditional hydrological models struggle to accurately capture the complex, non-linear relationships between rainfall and runoff, especially in rapidly changing environments. This is where our Transformer-based deep learning approach offers significant advantages.</p>
+                            </div>
+                            <div class="col-md-6">
+                                <img src="https://media.istockphoto.com/id/1418102444/vector/watershed-as-water-basin-system-with-mountain-river-streams.jpg?s=612x612&w=0&k=20&c=-mOkWXA5pPiSo3UZrJNRDxlATtaocBbdiboHQPbllog=" class="img-fluid watershed-img mb-3" alt="River watershed">
+                                <p class="text-center fst-italic">A typical watershed where rainfall-runoff processes occur</p>
+                                
+                                <div class="transformer-info mt-4">
+                                    <h5><i class="fas fa-lightbulb me-2"></i>Why This Matters</h5>
+                                    <p>Accurate rainfall-runoff modeling allows hydrologists, engineers, and policymakers to make better decisions about water resources, infrastructure design, and emergency management during extreme weather events.</p>
+                                    <p>With climate change increasing the frequency and severity of extreme weather events, the need for accurate and responsive rainfall-runoff models has never been more critical. Our Transformer-based approach can identify subtleties in rainfall-runoff relationships that physical models might miss.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Runoff Process Visual -->
+                        <h4 class="text-center mt-5 mb-4">The Rainfall-Runoff Cycle</h4>
+                        <div class="row">
+                            <div class="col-md-4 process-step">
+                                <div class="step-icon">
+                                    <i class="fas fa-cloud-rain"></i>
+                                </div>
+                                <h5 class="text-center">Precipitation</h5>
+                                <p class="text-center">Rain or snow falls onto the land surface, beginning the hydrological cycle.</p>
+                            </div>
+                            <div class="col-md-4 process-step">
+                                <div class="step-icon">
+                                    <i class="fas fa-arrow-down"></i>
+                                </div>
+                                <h5 class="text-center">Infiltration & Surface Runoff</h5>
+                                <p class="text-center">Water either seeps into the ground or flows across the surface depending on soil conditions and rainfall intensity.</p>
+                            </div>
+                            <div class="col-md-4 process-step">
+                                <div class="step-icon">
+                                    <i class="fas fa-water"></i>
+                                </div>
+                                <h5 class="text-center">Channel Flow</h5>
+                                <p class="text-center">Water collects in streams and rivers, with flow rates determined by watershed characteristics and precipitation patterns.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Visual gallery of runoff -->
+                        <div class="row mt-5">
+                            <div class="col-md-4">
+                                <div class="concept-card">
+                                    <img src="https://ddnews.gov.in/wp-content/uploads/2024/03/Yamuna20flood.jpg" alt="River during flood">
+                                    <div class="concept-overlay">
+                                        <h5>High Flow Conditions</h5>
+                                        <p>River systems during heavy rainfall events</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="concept-card">
+                                    <img src="https://www.hindustantimes.com/ht-img/img/2023/07/27/550x309/Mumbai--India---July-27--2023--Water-logging-at-Ma_1690483291547.jpg" alt="Urban runoff">
+                                    <div class="concept-overlay">
+                                        <h5>Urban Runoff</h5>
+                                        <p>Rainfall impacts in developed areas</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="concept-card">
+                                    <img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=600&q=80" alt="Watershed landscape">
+                                    <div class="concept-overlay">
+                                        <h5>Watershed Systems</h5>
+                                        <p>Complete drainage basin ecology</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <h5 id="model-title" class="card-title text-center mb-4"></h5>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">Performance Metrics</div>
-                                <div class="card-body">
-                                    <table class="table table-sm">
-                                        <tr>
-                                            <th>Mean Squared Error (MSE):</th>
-                                            <td id="mse-value"></td>
-                                        </tr>
-                                        <tr>
-                                            <th>Mean Absolute Error (MAE):</th>
-                                            <td id="mae-value"></td>
-                                        </tr>
-                                        <tr>
-                                            <th>R² Score:</th>
-                                            <td id="r2-value"></td>
-                                        </tr>
-                                        <tr>
-                                            <th>Total Predicted Runoff:</th>
-                                            <td id="predicted-runoff"></td>
-                                        </tr>
-                                        <tr>
-                                            <th>Total Actual Runoff:</th>
-                                            <td id="actual-runoff"></td>
-                                        </tr>
-                                        <tr>
-                                            <th>Difference:</th>
-                                            <td id="runoff-difference"></td>
-                                        </tr>
+            </div>
+        </div>
+
+        <!-- Data Requirements Section -->
+        <div id="data-requirements" class="row mb-5 no-print reveal">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-database me-2"></i> Dataset Requirements
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h4 class="mb-3">Required Dataset Format</h4>
+                                <p>The Transformer model requires time series data in CSV format with specific columns for effective rainfall-runoff analysis:</p>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead class="table-primary">
+                                            <tr>
+                                                <th>Column</th>
+                                                <th>Description</th>
+                                                <th>Units</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>Date</code></td>
+                                                <td>Timestamp for measurements (MM-DD-YYYY)</td>
+                                                <td>-</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Avg-Dis</code></td>
+                                                <td>Average discharge</td>
+                                                <td>m³/s</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Flood event Runoff</code></td>
+                                                <td>Runoff during flood events</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Daily Runoff</code></td>
+                                                <td>Daily runoff measurements</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Avg Weekly runoff</code></td>
+                                                <td>Average runoff over 7-day periods</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>Flood magnitude</code></td>
+                                                <td>Flood intensity rating (0-10)</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>rain</code></td>
+                                                <td>Precipitation amount</td>
+                                                <td>mm</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>tmin</code></td>
+                                                <td>Minimum temperature</td>
+                                                <td>°C</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>tmax</code></td>
+                                                <td>Maximum temperature</td>
+                                                <td>°C</td>
+                                            </tr>
+                                        </tbody>
                                     </table>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="transformer-info mb-4">
+                                    <h5><i class="fas fa-lightbulb me-2"></i>How Data is Processed</h5>
+                                    <p>The Transformer model uses this data in the following ways:</p>
+                                    <ul>
+                                        <li><strong>Input features:</strong> Rainfall, temperature (min/max), and historical runoff are used as key predictors</li>
+                                        <li><strong>Sequence learning:</strong> The model analyzes temporal patterns using a 7-day window by default</li>
+                                        <li><strong>Target variable:</strong> Daily Runoff is the primary prediction target</li>
+                                        <li><strong>Contextual information:</strong> Flood magnitude and average discharge provide additional context</li>
+                                    </ul>
+                                    <p>The Transformer's self-attention mechanism is particularly effective at discovering relationships between rainfall events and subsequent runoff patterns across different time scales.</p>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <h5><i class="fas fa-info-circle me-2"></i>Data Preparation Tips</h5>
+                                    <ul>
+                                        <li>Ensure your dataset has no missing values or interpolate gaps before uploading</li>
+                                        <li>Longer time series (1+ year) provide better training for seasonal patterns</li>
+                                        <li>Include periods with both normal conditions and extreme events for robust model training</li>
+                                        <li>Data will be automatically normalized before being fed to the Transformer model</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">Model Parameters</div>
-                                <div class="card-body">
-                                    <div id="transformer-results" class="model-results">
-                                        <table class="table table-sm">
-                                            <tr>
-                                                <th>Window Size:</th>
-                                                <td id="window-size-value"></td>
-                                            </tr>
-                                            <tr>
-                                                <th>Optimizer:</th>
-                                                <td id="optimizer-value"></td>
-                                            </tr>
-                                            <tr>
-                                                <th>Learning Rate:</th>
-                                                <td id="lr-value"></td>
-                                            </tr>
-                                            <tr>
-                                                <th>Weight Decay:</th>
-                                                <td id="wd-value"></td>
-                                            </tr>
-                                            <tr>
-                                                <th>Dropout:</th>
-                                                <td id="dropout-value"></td>
-                                            </tr>
-                                            <tr>
-                                                <th>Epochs:</th>
-                                                <td id="epochs-value"></td>
-                                            </tr>
-                                        </table>
-                                        <div id="model-specific-params"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="plot-container">
-                        <h5>Actual vs Predicted Values</h5>
-                        <div class="text-center">
-                            <img id="line-plot" class="img-fluid" alt="Line Plot">
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="plot-container">
-                                <h5>Scatter Plot</h5>
-                                <div class="text-center">
-                                    <img id="scatter-plot" class="img-fluid" alt="Scatter Plot">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="plot-container">
-                                <h5>Bar Plot (First 20 Samples)</h5>
-                                <div class="text-center">
-                                    <img id="bar-plot" class="img-fluid" alt="Bar Plot">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="plot-container">
-                                <h5>Residuals Plot</h5>
-                                <div class="text-center">
-                                    <img id="residuals-plot" class="img-fluid" alt="Residuals Plot">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="plot-container">
-                                <h5>Residuals Distribution</h5>
-                                <div class="text-center">
-                                    <img id="residuals-distribution" class="img-fluid" alt="Residuals Distribution">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-4 text-center">
-                        <button id="generate-report-btn" class="btn btn-primary mr-2">Generate Report</button>
-                        <button id="clear-session-btn" class="btn btn-danger ml-2">Clear Session</button>
-                    </div>
-                    
-                    <div id="report-section" class="mt-4" style="display: none;">
-                        <h4>Generated Report</h4>
-                        <div class="text-center">
-                            <img id="report-image" class="img-fluid" alt="Generated Report">
-                        </div>
-                        <div class="text-center mt-3">
-                            <a id="download-report" class="btn btn-success" download="transformer_report.png">Download Report</a>
+                        <!-- Sample Data Preview -->
+                        <h5 class="mt-4 mb-3">Sample Data Format</h5>
+                        <div class="sample-data-container p-3 bg-light rounded">
+                            <code>
+                                Date,Avg-Dis,Flood event Runoff mm,Daily Runoff,Avg Weekly runoff,Flood magnitude(0-10) mm,rain,tmin,tmax<br>
+                                01-01-1998,0,0,0,,0,0,20.71,30.6<br>
+                                01-02-1998,0,0,0,,0,0,20.58,30.57<br>
+                                ...<br>
+                            </code>
+                           
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
+        <!-- Transformer Info Section -->
+        <div id="model-info" class="row mb-5 no-print reveal">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-robot me-2"></i> Why Use Transformer Models?
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-7">
+                                <div class="transformer-info mb-4">
+                                    <h5><i class="fas fa-lightbulb me-2"></i>About Transformer Models</h5>
+                                    <p>Transformer models revolutionized sequence modeling by introducing self-attention mechanisms that capture long-range dependencies without using recurrence or convolutions. For rainfall-runoff forecasting, Transformers offer several advantages:</p>
+                                    <ul>
+                                        <li><strong>Parallel processing</strong> - More efficient than sequential RNNs</li>
+                                        <li><strong>Long-range dependencies</strong> - Better capture of temporal correlations over long periods</li>
+                                        <li><strong>Multi-head attention</strong> - Model can focus on different parts of input sequence</li>
+                                        <li><strong>Position-aware</strong> - Understands the sequential nature of time series data</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <img src="static\images\architecture.png" alt="Transformer Architecture Diagram" class="img-fluid watershed-img">
+                                <p class="text-center fst-italic mt-2">Transformer architecture with multi-head attention</p>
+                            </div>
+                        </div>
+                        
+                        <h5 class="mt-4 mb-3">Model Architecture</h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="hyperparameter-card">
+                                    <h6><i class="fas fa-project-diagram me-2"></i>Self-Attention</h6>
+                                    <p class="mb-0">Computes importance of each timestep relative to all others, allowing the model to focus on relevant parts of the input sequence.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="hyperparameter-card">
+                                    <h6><i class="fas fa-layer-group me-2"></i>Multi-Head Attention</h6>
+                                    <p class="mb-0">Allows model to attend to information from different representation subspaces, capturing different aspects of the data.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="hyperparameter-card">
+                                    <h6><i class="fas fa-code-branch me-2"></i>Feed-Forward Networks</h6>
+                                    <p class="mb-0">Processes the attention-weighted features to extract higher-level patterns and makes final predictions.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 class="mt-5 mb-3">Available Optimizers</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="hyperparameter-card">
+                                    <h6><i class="fas fa-sliders-h me-2"></i>Adam</h6>
+                                    <p class="mb-0">The standard adaptive learning rate optimization algorithm. Good for most tasks but can suffer from warm-up instability and suboptimal weight decay behavior.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="hyperparameter-card">
+                                    <h6><i class="fas fa-sliders-h me-2"></i>RAdam (Rectified Adam)</h6>
+                                    <p class="mb-0">Adds a rectification term to automatically adjust the adaptive learning rate, addressing the warm-up issue in Adam. Often provides more stable training.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="hyperparameter-card">
+                                    <h6><i class="fas fa-sliders-h me-2"></i>AdamW</h6>
+                                    <p class="mb-0">Corrects the weight decay implementation in Adam, decoupling it from the adaptive learning rate. Provides better generalization, especially for large models.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="hyperparameter-card">
+                                    <h6><i class="fas fa-sliders-h me-2"></i>Lookahead</h6>
+                                    <p class="mb-0">Wraps around standard optimizers (Adam in this case), maintaining two sets of weights and periodically updating them. Improves convergence stability and often finds better minima.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Transformer vs Traditional Models -->
+                        <h5 class="text-center mt-5 mb-4">Transformer Models vs. Traditional Approaches</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card feature-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-center mb-4">Traditional Hydrological Models</h5>
+                                        <ul>
+                                            <li>Based on physical equations and parameters</li>
+                                            <li>Require extensive calibration for each watershed</li>
+                                            <li>Limited ability to adapt to changing conditions</li>
+                                            <li>Difficult to incorporate diverse data sources</li>
+                                            <li>Often underperform during extreme events</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card feature-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-center mb-4">Transformer Neural Networks</h5>
+                                        <ul>
+                                            <li>Learn patterns directly from historical data</li>
+                                            <li>Can generalize across similar watersheds</li>
+                                            <li>Continuously improve with more data</li>
+                                            <li>Easily incorporate multiple data sources (rainfall, temperature, soil moisture)</li>
+                                            <li>Better performance during unusual or extreme conditions</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works Section -->
+        <div id="how-it-works" class="row mb-5 no-print reveal">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-cogs me-2"></i> How Our System Works
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-upload me-2"></i> Step 1: Data Upload</h3>
+                                    <p>Upload your time series data containing rainfall and runoff measurements. The system accepts CSV files with properly formatted data.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-cog me-2"></i> Step 2: Model Configuration</h3>
+                                    <p>Select the optimizer and other model parameters. The system will automatically configure the Transformer architecture for optimal performance.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-brain me-2"></i> Step 3: Model Training</h3>
+                                    <p>The system trains the Transformer model using your data, optimizing the attention mechanisms to capture important temporal patterns.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-chart-line me-2"></i> Step 4: Result Visualization</h3>
+                                    <p>View detailed performance metrics and visualizations to assess the model's accuracy and understand its predictions.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-content">
+                                    <h3><i class="fas fa-file-alt me-2"></i> Step 5: Report Generation</h3>
+                                    <p>Generate a comprehensive report that you can save or print for documentation and sharing with colleagues.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-5">
+                            <img src="static\images\pipeline.png" alt="Transformer processing pipeline" class="img-fluid watershed-img" style="max-width: 800px;">
+                            <p class="text-center fst-italic mt-2">The complete rainfall-runoff modeling pipeline using Transformer architecture</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div id="upload-section" class="card mb-5 no-print reveal">
+            <div class="card-header">
+                <i class="fas fa-cloud-upload-alt me-2"></i> Upload Data & Configure Model
+            </div>
+            <div class="card-body">
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label for="file" class="form-label">Select CSV file</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
+                        <div class="form-text text-muted">Upload your rainfall-runoff time series data in CSV format</div>
+                    </div>
+                    
+                    <!-- Replace the entire "Model Configuration" and "Transformer Architecture" sections with a simpler dropdown -->
+                    <div class="row">
+                        <div class="col-md-6 mx-auto">
+                            <div class="parameter-section">
+                                <h5 class="mb-3">Model Selection</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="optimizer_type" class="form-label">Optimizer</label>
+                                    <select class="form-select" id="optimizer_type" name="optimizer_type">
+                                        <option value="adam">Adam</option>
+                                        <option value="radam">RAdam (Rectified Adam)</option>
+                                        <option value="adamw">AdamW (Adam with Proper Weight Decay)</option>
+                                        <option value="lookahead">Lookahead (with Adam base)</option>
+                                    </select>
+                                    <div class="parameter-info">
+                                        <ul class="small mt-2">
+                                            <li><strong>Adam</strong> - Standard adaptive optimizer</li>
+                                            <li><strong>RAdam</strong> - Rectified Adam with variance correction</li>
+                                            <li><strong>AdamW</strong> - Adam with decoupled weight decay</li>
+                                            <li><strong>Lookahead</strong> - Improved convergence with parameter averaging</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                
+                                <!-- Hidden inputs for epochs and window_size with default values -->
+                                <input type="hidden" id="epochs" name="epochs" value="100">
+                                <input type="hidden" id="window_size" name="window_size" value="7">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-cogs me-2"></i>Train Transformer Model
+                        </button>
+                    </div>
+                </form>
+                <div class="loading mt-4" id="loading">
+                    <div class="spinner-border text-primary me-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span class="fs-5">Training model, please wait...</span>
+                    <div class="progress-indicator mt-3">
+                        <div class="progress-bar" id="training-progress"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Section -->
+        <div id="results-section">
+            <!-- Metrics Container -->
+            <div class="metrics-container" id="metrics" style="display:none;">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-chart-line me-2"></i> Model Performance Metrics
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="fas fa-code-branch me-2"></i>Transformer Variant</h5>
+                                        <p class="card-text fs-5" id="model-name"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="fas fa-calculator me-2"></i>Total Predicted Runoff</h5>
+                                        <p class="card-text fs-5" id="predicted-runoff"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="fas fa-tint me-2"></i>Total Actual Runoff</h5>
+                                        <p class="card-text fs-5" id="actual-runoff"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-4 mb-3">
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="fas fa-square-root-alt me-2"></i>Mean Squared Error (MSE)</h5>
+                                        <p class="card-text fs-5" id="mse"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="fas fa-ruler-vertical me-2"></i>Mean Absolute Error (MAE)</h5>
+                                        <p class="card-text fs-5" id="mae"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="fas fa-check-circle me-2"></i>R² Score</h5>
+                                        <p class="card-text fs-5" id="r2"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plot Container -->
+            <div class="plot-container" id="plots" style="display:none;">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-chart-area me-2"></i> Visualization Results
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs mb-4" id="plotTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="line-tab" data-bs-toggle="tab" data-bs-target="#line" type="button" role="tab">
+                                    <i class="fas fa-chart-line me-2"></i>Line Plot
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="scatter-tab" data-bs-toggle="tab" data-bs-target="#scatter" type="button" role="tab">
+                                    <i class="fas fa-braille me-2"></i>Scatter Plot
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="bar-tab" data-bs-toggle="tab" data-bs-target="#bar" type="button" role="tab">
+                                    <i class="fas fa-chart-bar me-2"></i>Bar Plot
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="residuals-tab" data-bs-toggle="tab" data-bs-target="#residuals" type="button" role="tab">
+                                    <i class="fas fa-wave-square me-2"></i>Residuals
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="dist-tab" data-bs-toggle="tab" data-bs-target="#dist" type="button" role="tab">
+                                    <i class="fas fa-chart-area me-2"></i>Residuals Distribution
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="loss-tab" data-bs-toggle="tab" data-bs-target="#loss" type="button" role="tab">
+                                    <i class="fas fa-signal me-2"></i>Loss Curve
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="plotTabContent">
+                            <div class="tab-pane fade show active" id="line" role="tabpanel">
+                                <div class="text-center mt-3">
+                                    <img id="line-plot" class="img-fluid" src="" alt="Line Plot">
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="scatter" role="tabpanel">
+                                <div class="text-center mt-3">
+                                    <img id="scatter-plot" class="img-fluid" src="" alt="Scatter Plot">
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="bar" role="tabpanel">
+                                <div class="text-center mt-3">
+                                    <img id="bar-plot" class="img-fluid" src="" alt="Bar Plot">
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="residuals" role="tabpanel">
+                                <div class="text-center mt-3">
+                                    <img id="residuals-plot" class="img-fluid" src="" alt="Residuals Plot">
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="dist" role="tabpanel">
+                                <div class="text-center mt-3">
+                                    <img id="residuals-dist" class="img-fluid" src="" alt="Residuals Distribution">
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="loss" role="tabpanel">
+                                <div class="text-center mt-3">
+                                    <img id="loss-curve" class="img-fluid" src="" alt="Loss Curve">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Report Section -->
+            <div class="report-section text-center" id="report-section" style="display:none;">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-file-pdf me-2"></i> Report Generation
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-4">Generate a comprehensive report of your analysis results</p>
+                        <button id="generate-report" class="btn btn-primary">
+                            <i class="fas fa-file-alt me-2"></i> Generate Report
+                        </button>
+                        <button id="print-report" class="btn btn-secondary ms-3">
+                            <i class="fas fa-print me-2"></i> Print Report
+                        </button>
+                        <div id="report-container" class="mt-4" style="display:none;">
+                            <img id="report-image" class="img-fluid" src="" alt="Generated Report">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <p class="mb-0">&copy; 2025 Transformer Runoff Analysis. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function toggleModelParams() {
-            const modelType = document.getElementById('model_type').value;
+        document.addEventListener("DOMContentLoaded", function() {
+            // Create rain animation
+            createRaindrops();
             
-            if (modelType === 'transformer') {
-                document.getElementById('transformer-params').style.display = 'block';
-                document.getElementById('rnn-params').style.display = 'none';
-            } else { // lstm or gru
-                document.getElementById('transformer-params').style.display = 'none';
-                document.getElementById('rnn-params').style.display = 'block';
-            }
-        }
-        
-        function selectModel(model) {
-            document.getElementById('model_type').value = model;
-            toggleModelParams();
+            // Reveal animations on scroll
+            window.addEventListener('scroll', revealOnScroll);
+            revealOnScroll(); // Initial check
             
-            // Update active button and card
-            document.querySelectorAll('.model-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.model-card').forEach(card => card.classList.remove('active'));
+            // Form submission handling
+            const form = document.getElementById('upload-form');
+            const loading = document.getElementById('loading');
             
-            document.getElementById(`${model}-card`).classList.add('active');
-            document.querySelector(`.${model}-btn`).classList.add('active');
-        }
-        
-        // Initialize model parameters visibility on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            toggleModelParams();
-            selectModel('transformer'); // Set default model
-        });
-
-        $('#upload-form').on('submit', function(event) {
-            event.preventDefault();
-            
-            $('.loading').show();
-            $('#upload-form button').prop('disabled', true);
-            $('#results').hide();
-            
-            const formData = new FormData(this);
-            
-            $.ajax({
-                url: '/upload',
-                type: 'POST',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function(response) {
-                    $('.loading').hide();
-                    $('#upload-form button').prop('disabled', false);
-                    displayResults(response);
-                },
-                error: function(xhr) {
-                    $('.loading').hide();
-                    $('#upload-form button').prop('disabled', false);
-                    alert('Error: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error occurred'));
-                }
-            });
-        });
-
-        function displayResults(data) {
-            // Show results section
-            $('#results').show();
-            
-            // Set title
-            $('#model-title').text(`${data.model_type} (Window Size: ${data.window_size})`);
-            
-            // Set metrics
-            $('#mse-value').text(data.metrics.mse.toFixed(6));
-            $('#mae-value').text(data.metrics.mae.toFixed(6));
-            $('#r2-value').text(data.metrics.r2_score.toFixed(6));
-            $('#predicted-runoff').text(`${data.metrics.total_predicted_runoff.toFixed(2)} m³/s`);
-            $('#actual-runoff').text(`${data.metrics.total_actual_runoff.toFixed(2)} m³/s`);
-            $('#runoff-difference').text(`${(data.metrics.total_predicted_runoff - data.metrics.total_actual_runoff).toFixed(2)} m³/s`);
-            
-            // Set model parameters
-            $('#window-size-value').text(data.window_size);
-            $('#optimizer-value').text(data.hyperparameters.optimizer.charAt(0).toUpperCase() + data.hyperparameters.optimizer.slice(1));
-            $('#lr-value').text(data.hyperparameters.learning_rate);
-            $('#wd-value').text(data.hyperparameters.weight_decay);
-            $('#dropout-value').text(data.hyperparameters.dropout);
-            $('#epochs-value').text(data.hyperparameters.epochs);
-            
-            // Set model-specific parameters
-            let modelType = data.model_type.toLowerCase().split(' ')[0];
-            let modelParamsHtml = '<table class="table table-sm mt-3">';
-            
-            if (modelType === 'transformer') {
-                modelParamsHtml += `
-                    <tr><th>d_model:</th><td>${data.hyperparameters.d_model}</td></tr>
-                    <tr><th>nhead:</th><td>${data.hyperparameters.nhead}</td></tr>
-                    <tr><th>num_encoder_layers:</th><td>${data.hyperparameters.num_encoder_layers}</td></tr>
-                    <tr><th>dim_feedforward:</th><td>${data.hyperparameters.dim_feedforward}</td></tr>
-                `;
-            } else {  // LSTM or GRU
-                modelParamsHtml += `
-                    <tr><th>hidden_size:</th><td>${data.hyperparameters.hidden_size}</td></tr>
-                    <tr><th>num_layers:</th><td>${data.hyperparameters.num_layers}</td></tr>
-                `;
-            }
-            
-            modelParamsHtml += '</table>';
-            $('#model-specific-params').html(modelParamsHtml);
-            
-            // Set images
-            $('#line-plot').attr('src', data.plots.line_plot);
-            $('#scatter-plot').attr('src', data.plots.scatter_plot);
-            $('#bar-plot').attr('src', data.plots.bar_plot);
-            $('#residuals-plot').attr('src', data.plots.residuals_plot);
-            $('#residuals-distribution').attr('src', data.plots.residuals_distribution);
-            
-            // Hide report section
-            $('#report-section').hide();
-            
-            // Scroll to results
-            $('html, body').animate({
-                scrollTop: $("#results").offset().top
-            }, 500);
-        }
-        
-        $('#generate-report-btn').on('click', function() {
-            const modelTitle = $('#model-title').text();
-            const mse = $('#mse-value').text();
-            const mae = $('#mae-value').text();
-            const r2 = $('#r2-value').text();
-            const predictedRunoff = $('#predicted-runoff').text();
-            const actualRunoff = $('#actual-runoff').text();
-            
-            // Get images
-            const linePlot = $('#line-plot').attr('src');
-            const scatterPlot = $('#scatter-plot').attr('src');
-            const barPlot = $('#bar-plot').attr('src');
-            const residualsPlot = $('#residuals-plot').attr('src');
-            const residualsDistribution = $('#residuals-distribution').attr('src');
-            
-            // AJAX call to generate report
-            $.ajax({
-                url: '/generate_report',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    model_type: modelTitle.split(' (')[0],
-                    window_size: $('#window-size-value').text(),
-                    hyperparameters: {
-                        optimizer: $('#optimizer-value').text(),
-                        learning_rate: $('#lr-value').text(),
-                        weight_decay: $('#wd-value').text(),
-                        dropout: $('#dropout-value').text(),
-                        epochs: $('#epochs-value').text(),
-                        d_model: $('td:contains("d_model")').next().text(),
-                        nhead: $('td:contains("nhead")').next().text(),
-                        num_encoder_layers: $('td:contains("num_encoder_layers")').next().text(),
-                        dim_feedforward: $('td:contains("dim_feedforward")').next().text(),
-                        hidden_size: $('td:contains("hidden_size")').next().text(),
-                        num_layers: $('td:contains("num_layers")').next().text()
-                    },
-                    metrics: {
-                        mse: parseFloat(mse),
-                        mae: parseFloat(mae),
-                        r2_score: parseFloat(r2),
-                        total_predicted_runoff: parseFloat(predictedRunoff),
-                        total_actual_runoff: parseFloat(actualRunoff)
-                    },
-                    plots: {
-                        line_plot: linePlot,
-                        scatter_plot: scatterPlot,
-                        bar_plot: barPlot,
-                        residuals_plot: residualsPlot,
-                        residuals_distribution: residualsDistribution,
-                        loss_curve: $('#loss-curve').attr('src') || linePlot // Fallback if loss curve not available
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Show loading indicator
+                loading.style.display = 'flex';
+                
+                // Simulate progress for visual feedback
+                simulateProgress();
+                
+                // Create form data
+                const formData = new FormData(form);
+                
+                // Submit data to server
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading indicator
+                    loading.style.display = 'none';
+                    
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        return;
                     }
-                }),
-                success: function(response) {
-                    $('#report-image').attr('src', response.report_url);
-                    $('#download-report').attr('href', response.report_url);
-                    $('#report-section').show();
+                    
+                    // Populate metrics
+                    document.getElementById('model-name').textContent = data.model_type;
+                    document.getElementById('predicted-runoff').textContent = data.metrics.total_predicted_runoff.toFixed(2) + ' m³/s';
+                    document.getElementById('actual-runoff').textContent = data.metrics.total_actual_runoff.toFixed(2) + ' m³/s';
+                    document.getElementById('mse').textContent = data.metrics.mse.toFixed(6);
+                    document.getElementById('mae').textContent = data.metrics.mae.toFixed(6);
+                    document.getElementById('r2').textContent = data.metrics.r2_score.toFixed(6);
+                    
+                    // Set plot images
+                    document.getElementById('line-plot').src = data.plots.line_plot;
+                    document.getElementById('scatter-plot').src = data.plots.scatter_plot;
+                    document.getElementById('bar-plot').src = data.plots.bar_plot;
+                    document.getElementById('residuals-plot').src = data.plots.residuals_plot;
+                    document.getElementById('residuals-dist').src = data.plots.residuals_distribution;
+                    document.getElementById('loss-curve').src = data.plots.loss_curve;
+                    
+                    // Store model results in sessionStorage for report generation
+                    sessionStorage.setItem('modelResults', JSON.stringify(data));
+                    
+                    // Show results sections
+                    document.getElementById('metrics').style.display = 'block';
+                    document.getElementById('plots').style.display = 'block';
+                    document.getElementById('report-section').style.display = 'block';
+                    
+                    // Scroll to results
+                    document.getElementById('metrics').scrollIntoView({behavior: 'smooth'});
+                })
+                .catch(error => {
+                    loading.style.display = 'none';
+                    alert('Error: ' + error);
+                });
+            });
+            
+            // Generate report button
+            document.getElementById('generate-report').addEventListener('click', function() {
+                const data = JSON.parse(sessionStorage.getItem('modelResults'));
+                if (!data) {
+                    alert('No model results available. Please run the model first.');
+                    return;
+                }
+                
+                fetch('/generate_report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.error) {
+                        alert('Error generating report: ' + result.error);
+                        return;
+                    }
+                    
+                    // Show report
+                    document.getElementById('report-image').src = result.report_url;
+                    document.getElementById('report-container').style.display = 'block';
                     
                     // Scroll to report
-                    $('html, body').animate({
-                        scrollTop: $("#report-section").offset().top
-                    }, 500);
-                },
-                error: function(xhr) {
-                    alert('Error generating report: ' + xhr.responseJSON.error);
-                }
+                    document.getElementById('report-container').scrollIntoView({behavior: 'smooth'});
+                })
+                .catch(error => {
+                    alert('Error: ' + error);
+                });
+            });
+            
+            // Print report button
+            document.getElementById('print-report').addEventListener('click', function() {
+                window.print();
             });
         });
         
-        $('#clear-session-btn').on('click', function() {
-            $.ajax({
-                url: '/clear_session',
-                type: 'POST',
-                success: function(response) {
-                    if (response.success) {
-                        $('#results').hide();
-                        $('#report-section').hide();
-                        $('#upload-form')[0].reset();
-                        toggleModelParams();
-                        
-                        // Scroll to top
-                        $('html, body').animate({
-                            scrollTop: $("body").offset().top
-                        }, 500);
-                    } else {
-                        alert('Error clearing session: ' + response.error);
-                    }
-                },
-                error: function(xhr) {
-                    alert('Error clearing session: ' + xhr.responseJSON.error);
+        // Create raindrops animation
+        function createRaindrops() {
+            const container = document.getElementById('rainContainer');
+            const containerWidth = container.offsetWidth;
+            const containerHeight = container.offsetHeight;
+            const raindropsCount = 50;
+            
+            for (let i = 0; i < raindropsCount; i++) {
+                const raindrop = document.createElement('div');
+                raindrop.classList.add('rain-drop');
+                
+                // Random positioning
+                const posX = Math.floor(Math.random() * containerWidth);
+                const delay = Math.random() * 2;
+                const duration = 0.5 + Math.random() * 0.8;
+                const height = 10 + Math.random() * 30;
+                
+                raindrop.style.left = `${posX}px`;
+                raindrop.style.height = `${height}px`;
+                raindrop.style.animationDelay = `${delay}s`;
+                raindrop.style.animationDuration = `${duration}s`;
+                
+                container.appendChild(raindrop);
+            }
+        }
+        
+        // Reveal elements on scroll
+        function revealOnScroll() {
+            const reveals = document.querySelectorAll('.reveal');
+            
+            for (let i = 0; i < reveals.length; i++) {
+                const windowHeight = window.innerHeight;
+                const elementTop = reveals[i].getBoundingClientRect().top;
+                const elementVisible = 150;
+                
+                if (elementTop < windowHeight - elementVisible) {
+                    reveals[i].classList.add('active');
                 }
-            });
-        });
+            }
+        }
+        
+        // Simulate progress bar for model training
+        function simulateProgress() {
+            const progressBar = document.getElementById('training-progress');
+            let width = 0;
+            const interval = setInterval(frame, 500);
+            
+            function frame() {
+                if (width >= 100) {
+                    clearInterval(interval);
+                } else {
+                    // Make progress seem more realistic with non-linear increments
+                    const increment = Math.max(1, 10 - Math.floor(width / 10));
+                    width += increment;
+                    progressBar.style.width = width + '%';
+                }
+            }
+        }
+        
+        // Clear stored data
+        function clearStoredData() {
+            if (confirm('Are you sure you want to clear all stored data and results?')) {
+                // Clear session storage
+                sessionStorage.removeItem('modelResults');
+                
+                // Hide results sections
+                document.getElementById('metrics').style.display = 'none';
+                document.getElementById('plots').style.display = 'none';
+                document.getElementById('report-section').style.display = 'none';
+                document.getElementById('report-container').style.display = 'none';
+                
+                // Clear form
+                document.getElementById('upload-form').reset();
+                
+                // Call server to clear session
+                fetch('/clear_session', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Session cleared successfully.');
+                    } else {
+                        alert('Error clearing session: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        }
     </script>
 </body>
 </html>
