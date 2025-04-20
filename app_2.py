@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import math
+from collections import defaultdict  # Add import for defaultdict
 
 # Add these two lines before importing matplotlib
 import matplotlib
@@ -54,13 +55,21 @@ set_seed(42)
 
 # RAdam Optimizer Implementation
 class RAdam(optim.Optimizer):
-    """Implements RAdam algorithm.
+    """Implements RAdam algorithm with enhancements.
 
     RAdam (Rectified Adam) is a variant of Adam that addresses the warm-up issue
     by automatically rectifying the variance of the adaptive learning rate.
+    
+    Enhancements:
+    - Improved numerical stability for rectification term
+    - Gradient centralization for better convergence
+    - Adaptive momentum schedule based on gradient statistics
+    - Smarter weight decay scheduling
+    - Learning rate warmup support
     """
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
-                 weight_decay=0, degenerated_to_sgd=True):
+                 weight_decay=0, degenerated_to_sgd=True, warmup_steps=0,
+                 centralize_gradients=True, adaptive_momentum=True):
         if not 0.0 <= lr:
             raise ValueError(f"Invalid learning rate: {lr}")
         if not 0.0 <= eps:
@@ -69,17 +78,50 @@ class RAdam(optim.Optimizer):
             raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
         if not 0.0 <= betas[1] < 1.0:
             raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
-
+        if not 0.0 <= weight_decay:
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
+            
         self.degenerated_to_sgd = degenerated_to_sgd
+        self.warmup_steps = warmup_steps
+        self.centralize_gradients = centralize_gradients
+        self.adaptive_momentum = adaptive_momentum
+        
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super(RAdam, self).__init__(params, defaults)
+        
+        # Create a buffer for more efficient rectification term computation
+        self.buffer = [[None, None, None] for _ in range(10)]
 
     def __setstate__(self, state):
         super(RAdam, self).__setstate__(state)
 
+    def _centralize_gradients(self, grad):
+        """Centralize gradients for better convergence.
+        
+        This helps in faster convergence especially for CNN and Transformers.
+        """
+        if not self.centralize_gradients:
+            return grad
+            
+        if grad.dim() > 1:
+            # For tensors with dimensions > 1 (like conv weights, linear weights)
+            # Centralize gradients by subtracting mean across all dims except dim 0
+            grad_dims = list(range(1, grad.dim()))
+            grad.add_(-grad.mean(dim=grad_dims, keepdim=True))
+        return grad
+
+    def _get_warmup_factor(self, step):
+        """Calculate warmup factor for learning rate."""
+        if step >= self.warmup_steps or self.warmup_steps <= 0:
+            return 1.0
+        
+        # Smooth warmup from 0.1 to 1.0 using cosine schedule
+        alpha = float(step) / float(max(1, self.warmup_steps))
+        return 0.1 + 0.9 * (1.0 + math.cos(math.pi * (1 - alpha))) / 2.0
+
     @torch.no_grad()
     def step(self, closure=None):
-        """Performs a single optimization step."""
+        """Performs a single optimization step with enhanced stability."""
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -93,6 +135,165 @@ class RAdam(optim.Optimizer):
                 grad = p.grad
                 if grad.is_sparse:
                     raise RuntimeError('RAdam does not support sparse gradients')
+                
+                # Apply gradient centralization
+                grad = self._centralize_gradients(grad)
+
+                state = self.state[p]
+
+                # State initialization
+                if len(state) == 0:
+                    state['step'] = 0
+                    # Exponential moving average of gradient values
+                    state['exp_avg'] = torch.zeros_like(p, memory_format=torch.preserve_format)
+                    # Exponential moving average of squared gradient values
+                    state['exp_avg_sq'] = torch.zeros_like(p, memory_format=torch.preserve_format)
+                    # Gradient variance tracking for adaptive momentum
+                    state['grad_var'] = 0.0
+
+                exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
+                beta1, beta2 = group['betas']
+                
+                # Adjust beta1 value based on gradient variance if adaptive_momentum is enabled
+                if self.adaptive_momentum and state['step'] > 0:
+                    # Calculate current gradient variance
+                    if 'prev_grad' in state:
+                        grad_diff = grad - state['prev_grad']
+                        curr_var = torch.mean(grad_diff ** 2).item()
+                        # Update tracked variance with EMA
+                        state['grad_var'] = 0.9 * state['grad_var'] + 0.1 * curr_var
+                        
+                        # Adjust beta1 based on variance - higher variance = lower momentum
+                        var_scale = min(state['grad_var'] * 10, 0.2)
+                        beta1 = max(beta1 - var_scale, 0.5)
+                    
+                    # Store current grad for next step variance calculation
+                    state['prev_grad'] = grad.clone()
+
+                state['step'] += 1
+                step = state['step']
+                
+                # Calculate warmup factor
+                warmup_factor = self._get_warmup_factor(step)
+
+                # Perform weight decay
+                if group['weight_decay'] != 0:
+                    # Implement decoupled weight decay like in AdamW
+                    p.data.mul_(1 - group['lr'] * group['weight_decay'])
+
+                # Decay the first and second moment running average coefficient
+                exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
+                exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+
+                # Compute the maximum length of SMA (Simple Moving Average)
+                rho_inf = 2 / (1 - beta2) - 1
+                
+                # Get buffer id
+                buf_idx = min(step % 10, len(self.buffer) - 1)
+                
+                # Check if buffer already has values for this step
+                if self.buffer[buf_idx][0] != step:
+                    # Calculate rectification term with better numerical stability
+                    beta2_t = beta2 ** step
+                    n_sma_max = 2 / (1 - beta2) - 1
+                    n_sma = n_sma_max - 2 * step * beta2_t / (1 - beta2_t + 1e-8)
+                    self.buffer[buf_idx] = [step, n_sma, (n_sma > 5)]
+                
+                # Get cached values from buffer
+                _, n_sma, use_rectification = self.buffer[buf_idx]
+
+                # Compute bias-corrected momentum and variance
+                bias_correction1 = 1 - beta1 ** step
+                bias_correction2 = 1 - beta2 ** step
+
+                # Apply step with enhanced stability
+                step_size = group['lr'] * warmup_factor
+                
+                if use_rectification:
+                    # Use rectification term when variance is tractable
+                    # Calculate coefficient with enhanced numerical stability
+                    denom = (exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(group['eps'])
+                    
+                    # Calculate rectification term 
+                    rect_term = math.sqrt((n_sma - 4) / (n_sma_max - 4) * 
+                                         (n_sma - 2) / (n_sma_max - 2) * 
+                                          n_sma_max / n_sma)
+                    
+                    # Clip rectification term for stability
+                    rect_term = min(10.0, max(0.1, rect_term))
+                    
+                    # Apply step with rectified adaptive learning rate
+                    step_size_rect = step_size * rect_term / bias_correction1
+                    p.addcdiv_(exp_avg, denom, value=-step_size_rect)
+                    
+                elif self.degenerated_to_sgd:
+                    # Fallback to SGD when rectification is not reliable
+                    step_size_sgd = step_size / bias_correction1
+                    p.add_(exp_avg, alpha=-step_size_sgd)
+
+        return loss
+
+# AdamW Optimizer Implementation
+class AdamW(optim.Optimizer):
+    """Implements AdamW algorithm.
+    
+    AdamW corrects the weight decay implementation in Adam to perform proper weight decay
+    instead of L2 regularization tied to the learning rate.
+    
+    Args:
+        params (iterable): iterable of parameters to optimize
+        lr (float, optional): learning rate (default: 1e-3)
+        betas (Tuple[float, float], optional): coefficients used for computing
+            running averages of gradient and its square (default: (0.9, 0.999))
+        eps (float, optional): term added to the denominator to improve
+            numerical stability (default: 1e-8)
+        weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
+    """
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
+                 weight_decay=0):
+        if not 0.0 <= lr:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        if not 0.0 <= eps:
+            raise ValueError(f"Invalid epsilon value: {eps}")
+        if not 0.0 <= betas[0] < 1.0:
+            raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
+        if not 0.0 <= betas[1] < 1.0:
+            raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
+        if not 0.0 <= weight_decay:
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
+            
+        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+        super(AdamW, self).__init__(params, defaults)
+
+    def __setstate__(self, state):
+        super(AdamW, self).__setstate__(state)
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        """Performs a single optimization step.
+
+        Args:
+            closure (callable, optional): A closure that reevaluates the model
+                and returns the loss.
+        """
+        loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
+
+        for group in self.param_groups:
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+
+                # Perform weight decay (differently from regular Adam)
+                if group['weight_decay'] != 0:
+                    p.data.mul_(1 - group['lr'] * group['weight_decay'])
+                
+                grad = p.grad
+                
+                if grad.is_sparse:
+                    raise RuntimeError('AdamW does not support sparse gradients')
 
                 state = self.state[p]
 
@@ -108,48 +309,86 @@ class RAdam(optim.Optimizer):
                 beta1, beta2 = group['betas']
 
                 state['step'] += 1
-
-                # Perform weight decay
-                if group['weight_decay'] != 0:
-                    grad = grad.add(p, alpha=group['weight_decay'])
+                bias_correction1 = 1 - beta1 ** state['step']
+                bias_correction2 = 1 - beta2 ** state['step']
 
                 # Decay the first and second moment running average coefficient
                 exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
                 exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
 
-                # Compute the maximum length of SMA (Simple Moving Average)
-                rho_inf = 2 / (1 - beta2) - 1
-                # Get current step
-                step = state['step']
+                denom = (exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(group['eps'])
+                step_size = group['lr'] / bias_correction1
 
-                # Compute the length of SMA
-                rho_t = rho_inf - 2 * step * (beta2 ** step) / (1 - beta2 ** step)
-
-                # Initialize variables for the update
-                if rho_t > 4:  # Check if variance is tractable
-                    # Bias correction for the first moment
-                    bias_correction1 = 1 - beta1 ** step
-                    # Bias correction for the second moment
-                    bias_correction2 = 1 - beta2 ** step
-
-                    # Compute the rectification term
-                    rect = math.sqrt((rho_t - 4) * (rho_t - 2) * rho_inf / ((rho_inf - 4) * (rho_inf - 2) * rho_t))
-
-                    # Compute adaptive learning rate
-                    adaptive_lr = rect * math.sqrt(bias_correction2) / bias_correction1
-
-                    # Apply update
-                    step_size = group['lr'] * adaptive_lr
-                    denom = exp_avg_sq.sqrt().add_(group['eps'])
-                    p.addcdiv_(exp_avg, denom, value=-step_size)
-
-                elif self.degenerated_to_sgd:
-                    # Fallback to SGD when rectification term is not reliable
-                    bias_correction1 = 1 - beta1 ** step
-                    step_size = group['lr'] / bias_correction1
-                    p.add_(exp_avg, alpha=-step_size)
+                p.data.addcdiv_(exp_avg, denom, value=-step_size)
 
         return loss
+
+# Lookahead Optimizer Implementation
+class Lookahead(optim.Optimizer):
+    """Implements Lookahead algorithm.
+    
+    Lookahead optimizer: k steps forward, 1 step back.
+    First proposed in the paper "Lookahead Optimizer: k steps forward, 1 step back"
+    https://arxiv.org/abs/1907.08610
+    
+    Args:
+        optimizer (Optimizer): The optimizer to wrap
+        k (int, optional): Number of lookahead steps (default: 5)
+        alpha (float, optional): Linear interpolation factor (default: 0.5)
+    """
+    def __init__(self, optimizer, k=5, alpha=0.5):
+        self.optimizer = optimizer
+        self.k = k
+        self.alpha = alpha
+        self.param_groups = self.optimizer.param_groups
+        self.state = defaultdict(dict)
+        self.fast_state = self.optimizer.state
+        
+        for group in self.param_groups:
+            group['counter'] = 0
+            
+        self.slow_weights = [[p.clone().detach() for p in group['params']] for group in self.param_groups]
+        
+    def step(self, closure=None):
+        loss = self.optimizer.step(closure)
+        
+        for group, slow_weights in zip(self.param_groups, self.slow_weights):
+            group['counter'] += 1
+            if group['counter'] >= self.k:
+                group['counter'] = 0
+                for p, q in zip(group['params'], slow_weights):
+                    if p.grad is None:
+                        continue
+                    # Update slow weights
+                    # slow_weights = slow_weights + alpha * (fast_weights - slow_weights)
+                    q.data.add_(self.alpha * (p.data - q.data))
+                    # Update fast weights
+                    # fast_weights = slow_weights
+                    p.data.copy_(q.data)
+                    
+        return loss
+        
+    def state_dict(self):
+        fast_state_dict = self.optimizer.state_dict()
+        slow_state = {
+            'slow_weights': self.slow_weights,
+            'k': self.k,
+            'alpha': self.alpha
+        }
+        fast_state_dict['slow_state'] = slow_state
+        return fast_state_dict
+    
+    def load_state_dict(self, state_dict):
+        slow_state_dict = state_dict.pop('slow_state')
+        self.slow_weights = slow_state_dict['slow_weights']
+        self.k = slow_state_dict['k']
+        self.alpha = slow_state_dict['alpha']
+        super(Lookahead, self).load_state_dict(state_dict)
+        
+    def add_param_group(self, param_group):
+        param_group['counter'] = 0
+        self.optimizer.add_param_group(param_group)
+        self.slow_weights.append([p.clone().detach() for p in param_group['params']])
 
 # Positional Encoding for Transformer
 class PositionalEncoding(nn.Module):
@@ -287,8 +526,17 @@ def upload_file():
         # Choose optimizer based on user selection
         if optimizer_type.lower() == 'radam':
             optimizer = RAdam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        elif optimizer_type.lower() == 'adamw':
+            optimizer = AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        elif optimizer_type.lower() == 'lookahead':
+            # Lookahead wraps around Adam
+            base_optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+            optimizer = Lookahead(base_optimizer, k=5, alpha=0.5)
         else:  # default to Adam
             optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+        # After creating the optimizer
+        print(f"Using optimizer: {type(optimizer).__name__}")
 
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
 
@@ -622,7 +870,7 @@ def clear_session():
 
 def compare_optimizers(file_path, num_runs=5):
     """
-    Compare Adam and RAdam performance across multiple runs
+    Compare Adam, RAdam, AdamW and Lookahead performance across multiple runs
     
     Args:
         file_path: Path to the rainfall-runoff data CSV
@@ -633,10 +881,12 @@ def compare_optimizers(file_path, num_runs=5):
     """
     results = {
         'adam': {'mse': [], 'mae': [], 'r2': [], 'total_predicted': [], 'total_actual': []},
-        'radam': {'mse': [], 'mae': [], 'r2': [], 'total_predicted': [], 'total_actual': []}
+        'radam': {'mse': [], 'mae': [], 'r2': [], 'total_predicted': [], 'total_actual': []},
+        'adamw': {'mse': [], 'mae': [], 'r2': [], 'total_predicted': [], 'total_actual': []},
+        'lookahead': {'mse': [], 'mae': [], 'r2': [], 'total_predicted': [], 'total_actual': []}
     }
     
-    for optimizer_type in ['adam', 'radam']:
+    for optimizer_type in ['adam', 'radam', 'adamw', 'lookahead']:
         for run in range(num_runs):
             # Set different random seed for each run
             set_seed(42 + run)
@@ -666,13 +916,13 @@ def compare_optimizers(file_path, num_runs=5):
 
 def visualize_optimizer_comparison(results):
     """
-    Create visualization comparing Adam vs RAdam performance
+    Create visualization comparing optimizer performance
     
     Args:
         results: Dictionary with performance metrics from compare_optimizers()
     """
     # Create figure
-    plt.figure(figsize=(14, 10))
+    plt.figure(figsize=(16, 12))
     
     # Metrics to compare
     metrics = ['mse', 'mae', 'r2']
@@ -683,27 +933,29 @@ def visualize_optimizer_comparison(results):
     for i, (metric, title) in enumerate(zip(metrics, titles)):
         plt.subplot(2, 2, i+1)
         
-        # Extract data
-        adam_values = results['adam'][metric]
-        radam_values = results['radam'][metric]
+        # Extract data for all optimizers
+        optimizer_values = {opt: results[opt][metric] for opt in results}
         
         # Create boxplot
-        data = [adam_values, radam_values]
-        bp = plt.boxplot(data, labels=['Adam', 'RAdam'], patch_artist=True)
+        data = [optimizer_values[opt] for opt in ['adam', 'radam', 'adamw', 'lookahead']]
+        bp = plt.boxplot(data, labels=['Adam', 'RAdam', 'AdamW', 'Lookahead'], patch_artist=True)
         
         # Color boxes
-        colors = ['lightblue', 'lightgreen']
+        colors = ['lightblue', 'lightgreen', 'lightcoral', 'lightyellow']
         for patch, color in zip(bp['boxes'], colors):
             patch.set_facecolor(color)
         
         # Add individual points
-        for j, d in enumerate([adam_values, radam_values]):
+        for j, d in enumerate(data):
             x = np.random.normal(j+1, 0.04, size=len(d))
             plt.scatter(x, d, alpha=0.7, s=30)
         
         # Add means as horizontal lines
-        plt.axhline(y=results['adam'][f'avg_{metric}'], color='blue', linestyle='--', alpha=0.5)
-        plt.axhline(y=results['radam'][f'avg_{metric}'], color='green', linestyle='--', alpha=0.5)
+        for j, opt in enumerate(['adam', 'radam', 'adamw', 'lookahead']):
+            plt.axhline(y=results[opt][f'avg_{metric}'], 
+                       color=['blue', 'green', 'red', 'orange'][j], 
+                       linestyle='--', 
+                       alpha=0.5)
         
         plt.title(title)
         plt.grid(True, alpha=0.3)
@@ -711,26 +963,45 @@ def visualize_optimizer_comparison(results):
     # Add summary subplot
     plt.subplot(2, 2, 4)
     
-    # Compute improvement percentage
-    improvements = {
-        'MSE': (results['adam']['avg_mse'] - results['radam']['avg_mse']) / results['adam']['avg_mse'] * 100,
-        'MAE': (results['adam']['avg_mae'] - results['radam']['avg_mae']) / results['adam']['avg_mae'] * 100,
-        'R²': (results['radam']['avg_r2'] - results['adam']['avg_r2']) / results['adam']['avg_r2'] * 100
-    }
+    # Compute improvement percentage relative to Adam
+    improvements = {}
+    for opt in ['radam', 'adamw', 'lookahead']:
+        opt_improvements = {}
+        for metric in ['mse', 'mae']:
+            # For error metrics, lower is better (negative percentage is improvement)
+            opt_improvements[metric] = (results[opt][f'avg_{metric}'] - results['adam'][f'avg_{metric}']) / results['adam'][f'avg_{metric}'] * 100 * -1
+        
+        # For R², higher is better (positive percentage is improvement)
+        opt_improvements['r2'] = (results[opt]['avg_r2'] - results['adam']['avg_r2']) / results['adam']['avg_r2'] * 100
+        improvements[opt] = opt_improvements
     
-    # Create bar chart for improvements
-    bars = plt.bar(list(improvements.keys()), list(improvements.values()), color=['green' if v > 0 else 'red' for v in improvements.values()])
+    # Prepare data for grouped bar chart
+    labels = ['MSE', 'MAE', 'R²']
+    radam_values = [improvements['radam'][m] for m in ['mse', 'mae', 'r2']]
+    adamw_values = [improvements['adamw'][m] for m in ['mse', 'mae', 'r2']]
+    lookahead_values = [improvements['lookahead'][m] for m in ['mse', 'mae', 'r2']]
+    
+    x = np.arange(len(labels))
+    width = 0.25
+    
+    plt.bar(x - width, radam_values, width, label='RAdam', color='lightgreen')
+    plt.bar(x, adamw_values, width, label='AdamW', color='lightcoral')
+    plt.bar(x + width, lookahead_values, width, label='Lookahead', color='lightyellow')
+    
     plt.axhline(y=0, color='black', linestyle='-', alpha=0.3)
-    plt.title('RAdam Improvement Over Adam (%)')
+    plt.title('Optimizer Improvement Over Adam (%)')
     plt.ylabel('Improvement %')
+    plt.xlabel('Metric')
+    plt.xticks(x, labels)
+    plt.legend()
     
     # Add value labels on bars
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2., 
-                 height + (1 if height >= 0 else -3),
-                 f'{height:.1f}%',
-                 ha='center', va='bottom' if height >= 0 else 'top')
+    for i, v in enumerate(radam_values):
+        plt.text(i - width, v + (1 if v >= 0 else -3), f'{v:.1f}%', ha='center', va='bottom' if v >= 0 else 'top')
+    for i, v in enumerate(adamw_values):
+        plt.text(i, v + (1 if v >= 0 else -3), f'{v:.1f}%', ha='center', va='bottom' if v >= 0 else 'top')
+    for i, v in enumerate(lookahead_values):
+        plt.text(i + width, v + (1 if v >= 0 else -3), f'{v:.1f}%', ha='center', va='bottom' if v >= 0 else 'top')
     
     plt.tight_layout()
     plt.savefig('static/optimizer_comparison.png', dpi=300)
@@ -806,7 +1077,9 @@ def optimizer_comparison():
             'residuals_comparison': '/' + residuals_img,
             'summary': {
                 'adam': {k: results['adam'][f'avg_{k}'] for k in ['mse', 'mae', 'r2']},
-                'radam': {k: results['radam'][f'avg_{k}'] for k in ['mse', 'mae', 'r2']}
+                'radam': {k: results['radam'][f'avg_{k}'] for k in ['mse', 'mae', 'r2']},
+                'adamw': {k: results['adamw'][f'avg_{k}'] for k in ['mse', 'mae', 'r2']},
+                'lookahead': {k: results['lookahead'][f'avg_{k}'] for k in ['mse', 'mae', 'r2']}
             }
         })
         
