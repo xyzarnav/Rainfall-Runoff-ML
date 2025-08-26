@@ -1,0 +1,2 @@
+[2025-04-20 11:29:11] ModelTrainingError: Error during training: 'Lookahead' object has no attribute 'defaults'
+[2025-04-20 11:47:08] ModelTrainingError: Error during training: 'Lookahead' object has no attribute '_optimizer_step_pre_hooks'
